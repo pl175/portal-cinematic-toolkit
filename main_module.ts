@@ -3334,8 +3334,10 @@ export namespace PCT {
 
       Path.ResetPointsOrderIds();
 
+      const orderId = _pathState.points[_pathState.points.length - 1].orderId;
+
       console.log(
-        `New Pathpoint Added (total: ${_pathState.points.length}) at (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`,
+        `Pathpoint Added (orderId: ${orderId}) at (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`,
       );
 
       PathCameraSetupUI.RefreshPathControlMenu(dirPlayer);
@@ -3456,6 +3458,11 @@ export namespace PCT {
       PCT_WIM.init().deleteIcon(_pathState.points[index].worldIconName);
 
       if (index !== -1) {
+        const pos = _pathState.points[index].pos;
+        const orderId = _pathState.points[index].orderId;
+        console.log(
+          `Pathpoint Removed (orderId: ${orderId}) at (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`,
+        );
         _pathState.points.splice(index, 1);
         Path.ResetPointsOrderIds();
       }
@@ -3549,6 +3556,12 @@ export namespace PCT {
 
       mod.UnspawnObject(pointFx);
       PathCameraSetupUI.HideMovePointTipWindow(dirPlayer);
+
+      mod.SetInventoryMagazineAmmo(
+        dirPlayer,
+        mod.InventorySlots.SecondaryWeapon,
+        99,
+      );
 
       _pathState.isMoving = false;
       _pathState.locked = false;
@@ -3657,6 +3670,136 @@ export namespace PCT {
     if (ps.directorState.pathCameraInteractPoint) {
       mod.UnspawnObject(ps.directorState.pathCameraInteractPoint);
       ps.directorState.pathCameraInteractPoint = null;
+    }
+  }
+
+  namespace FreeCamCollision {
+    type RayState = {
+      active: boolean;
+      hit: boolean;
+      point: V3 | null;
+      normal: V3 | null;
+      missCount: number;
+    };
+
+    const states = new Map<number, RayState>();
+
+    const CAMERA_WALL_PADDING = 0.35;
+    const RAY_START_HEIGHT_OFFSET = 1.2;
+
+    function GetState(dirPlayer: mod.Player): RayState {
+      const pid = mod.GetObjId(dirPlayer);
+      let state = states.get(pid);
+
+      if (!state) {
+        state = {
+          active: false,
+          hit: false,
+          point: null,
+          normal: null,
+          missCount: 0,
+        };
+
+        states.set(pid, state);
+      }
+
+      return state;
+    }
+
+    export function Request(
+      dirPlayer: mod.Player,
+      trackedPlayerPos: V3,
+      desiredCamPos: V3,
+    ): void {
+      const state = GetState(dirPlayer);
+
+      const rayStart = V3.Create(
+        trackedPlayerPos.x,
+        trackedPlayerPos.y + RAY_START_HEIGHT_OFFSET,
+        trackedPlayerPos.z,
+      );
+
+      state.active = true;
+
+      mod.RayCast(dirPlayer, V3.ToVector(rayStart), V3.ToVector(desiredCamPos));
+    }
+
+    export function GetCameraOffsetScale(
+      trackedPlayerPos: V3,
+      desiredCamPos: V3,
+      correctedCamPos: V3,
+    ): number {
+      const desiredDistance = V3.DistanceBetween(
+        trackedPlayerPos,
+        desiredCamPos,
+        DistanceType.XYZ,
+      ).full;
+
+      if (desiredDistance <= 0.001) {
+        return 0;
+      }
+
+      const correctedDistance = V3.DistanceBetween(
+        trackedPlayerPos,
+        correctedCamPos,
+        DistanceType.XYZ,
+      ).full;
+
+      return Clamp(correctedDistance / desiredDistance, 0, 1);
+    }
+
+    export function CorrectPosition(
+      dirPlayer: mod.Player,
+      desiredCamPos: V3,
+    ): V3 {
+      const state = GetState(dirPlayer);
+
+      if (!state.active || !state.hit || !state.point || !state.normal) {
+        return desiredCamPos;
+      }
+
+      return V3.Add(
+        state.point,
+        V3.Scale(V3.Normalize(state.normal), CAMERA_WALL_PADDING),
+      );
+    }
+
+    export function OnHit(
+      eventPlayer: mod.Player,
+      eventPoint: mod.Vector,
+      eventNormal: mod.Vector,
+    ): void {
+      if (!mod.IsPlayerValid(eventPlayer)) return;
+
+      const state = GetState(eventPlayer);
+
+      state.active = true;
+      state.hit = true;
+      state.missCount = 0;
+      state.point = Vector.ToV3(eventPoint);
+      state.normal = Vector.ToV3(eventNormal);
+    }
+
+    export function OnMissed(eventPlayer: mod.Player): void {
+      if (!mod.IsPlayerValid(eventPlayer)) return;
+
+      const state = GetState(eventPlayer);
+
+      state.active = true;
+      state.missCount++;
+
+      if (state.missCount < 3) {
+        return;
+      }
+
+      state.hit = false;
+      state.point = null;
+      state.normal = null;
+    }
+
+    export function Clear(dirPlayer: mod.Player): void {
+      if (!mod.IsPlayerValid(dirPlayer)) return;
+      states.delete(mod.GetObjId(dirPlayer));
     }
   }
 
@@ -3802,38 +3945,36 @@ export namespace PCT {
     camStartPos.y += 60;
 
     const camParamsRefreshTicks = 10;
+    const freeCamCollisionRaycastTicks = 5; // Raycast Call Throttle. You could increase this to improve performance at the cost of collision correction smoothness
 
-    const trackedPlayerPitchOffsetRad = DegToRad(16);
-    const trackedRotationSmoothingYaw = 0.12;
-    const trackedRotationSmoothingPitch = 0.12;
-    const trackedPlayerYSmoothing = 0.08;
+    const trackedPlayerPitchOffsetRad = DegToRad(10); // how much the camera should pitch upwards when directly behind the player
+    const trackedRotationSmoothingYaw = 0.12; // how much the camera should smooth the yaw rotation when tracking a player
+    const trackedRotationSmoothingPitch = 0.12; // how much the camera should smooth the pitch rotation when tracking a player
+    const trackedPlayerYSmoothing = 0.08; // how much the camera should smooth the Y position when tracking a player (reduce jitter up/down on uneven terrain)
 
     const focusPositionSmoothing = 0.1;
     const focusRotationSmoothing = 0.1;
     const focusArriveDistance = 0.01;
     const focusArriveAngle = 0.01;
-    const focusPullbackDistance = 2;
-    const focusHeightOffset = 0.9;
+    const focusPullbackDistance = 3; // horizontal offset of camera behind player
+    const focusHeightOffset = 0.9; // vertical offset of camera from player position when in focus mode
 
     const focusedInputSideOffsetMax = 0.9;
     const focusedInputForwardOffsetMax = 0.7;
     const focusedInputSideSmoothing = 0.12;
     const focusedInputForwardSmoothing = 0.12;
 
-    const freeMoveRotationSmoothing = 0.18;
-    const freeMoveForwardSmoothing = 0.12;
-    const freeMoveStrafeSmoothing = 0.12;
+    const freeMoveRotationSmoothing = 0.18; // how much the camera should smooth the rotation when in free move mode
+    const freeMoveForwardSmoothing = 0.12; // how much the camera should smooth the forward movement when in free move mode
+    const freeMoveStrafeSmoothing = 0.12; // how much the camera should smooth the strafing movement when in free move mode
 
-    // Applies if ZoomOutBetweenTargets is enabled *START*
-    const targetSwitchDistanceThreshold = 100;
-    const targetSwitchZoomOutHeight = 100;
-
+    // Applies if ZoomOutBetweenTargets is enabled
+    const targetSwitchDistanceThreshold = 100; // minimum distance between current and new target for the zoom out/in transition to trigger
+    const targetSwitchZoomOutHeight = 100; // height to zoom out during target switch
     const targetSwitchZoomOutPositionSmoothing = 0.08;
     const targetSwitchZoomInPositionSmoothing = 0.1;
     const targetSwitchRotationSmoothing = 0.16;
-
     const targetSwitchArriveDistance = 0.8;
-    // If zoomOutBetweenTargets is enabled *END*
 
     const minPitch = -DegToRad(89);
     const maxPitch = DegToRad(89);
@@ -3850,11 +3991,12 @@ export namespace PCT {
 
     let smoothedTrackedYaw: number | null = null;
     let smoothedTrackedPitch: number | null = null;
+    let smoothedCollisionCamPos: V3 | null = null;
+    let previousDesiredTrackedCamPos: V3 | null = null;
 
     let focusTransitionTargetPos: V3 | null = null;
     let focusTransitionTargetRot: V3 | null = null;
 
-    // If zoomOutBetweenTargets is enabled *START*
     enum TargetSwitchPhase {
       None,
       ZoomOut,
@@ -3957,7 +4099,6 @@ export namespace PCT {
       smoothedTrackedYaw = null;
       smoothedTrackedPitch = null;
     }
-    // If zoomOutBetweenTargets is enabled *END*
 
     let focusedInputSideOffsetCurrent = 0;
     let focusedInputForwardOffsetCurrent = 0;
@@ -4060,6 +4201,9 @@ export namespace PCT {
             lastTrackedTargetPlayer !== null &&
             !mod.Equals(trackedPlayer, lastTrackedTargetPlayer)
           ) {
+            previousDesiredTrackedCamPos = null;
+            smoothedCollisionCamPos = null;
+
             TryStartTargetSwitchTransition(
               lastTrackedTargetPlayer,
               trackedPlayer,
@@ -4091,6 +4235,7 @@ export namespace PCT {
             }
 
             if (_cameraState.freeCamIsDefocusing) {
+              // NOTE: Defocusing is currently not triggered in this script version, but logic is here and can be enabled
               const defocusTarget = PlayerTracking.GetFollowTarget(
                 effectiveTrackedPlayerPosForLoop,
                 trackedPlayer,
@@ -4138,6 +4283,9 @@ export namespace PCT {
 
         focusTransitionTargetPos = null;
         focusTransitionTargetRot = null;
+
+        previousDesiredTrackedCamPos = null;
+        smoothedCollisionCamPos = null;
       }
 
       let inputDirection = V3.Zero();
@@ -4567,6 +4715,81 @@ export namespace PCT {
             ClearTargetSwitchTransition();
           }
         }
+      }
+
+      if (
+        _cameraState.freeCamIsTracking &&
+        targetSwitchPhase === TargetSwitchPhase.None &&
+        !_cameraState.freeCamIsFocusing &&
+        !_cameraState.freeCamIsDefocusing &&
+        focusTransitionTargetPos === null &&
+        effectiveTrackedPlayerPosForLoop !== null &&
+        PlayerTracking.CurrentTargetIsValid()
+      ) {
+        let desiredTrackedCamPos: V3;
+
+        if (previousDesiredTrackedCamPos === null) {
+          desiredTrackedCamPos = finalCamPos;
+        } else {
+          desiredTrackedCamPos = V3.Create(
+            V3.Lerp(previousDesiredTrackedCamPos.x, finalCamPos.x, 0.2),
+            V3.Lerp(previousDesiredTrackedCamPos.y, finalCamPos.y, 0.2),
+            V3.Lerp(previousDesiredTrackedCamPos.z, finalCamPos.z, 0.2),
+          );
+        }
+
+        previousDesiredTrackedCamPos = desiredTrackedCamPos;
+
+        if (tickCounter % freeCamCollisionRaycastTicks === 0) {
+          FreeCamCollision.Request(
+            dirPlayer,
+            effectiveTrackedPlayerPosForLoop,
+            desiredTrackedCamPos,
+          );
+        }
+
+        const correctedCamPos = FreeCamCollision.CorrectPosition(
+          dirPlayer,
+          desiredTrackedCamPos,
+        );
+
+        smoothedCollisionCamPos =
+          smoothedCollisionCamPos === null
+            ? correctedCamPos
+            : V3.Create(
+                V3.Lerp(smoothedCollisionCamPos.x, correctedCamPos.x, 0.18),
+                V3.Lerp(smoothedCollisionCamPos.y, correctedCamPos.y, 0.18),
+                V3.Lerp(smoothedCollisionCamPos.z, correctedCamPos.z, 0.18),
+              );
+
+        finalCamPos = smoothedCollisionCamPos;
+
+        const trackedPlayerPitchOffsetScale =
+          FreeCamCollision.GetCameraOffsetScale(
+            effectiveTrackedPlayerPosForLoop,
+            desiredTrackedCamPos,
+            finalCamPos,
+          );
+
+        const directTrackedPitch = Clamp(
+          PitchTowards(finalCamPos, effectiveTrackedPlayerPosForLoop) -
+            trackedPlayerPitchOffsetRad,
+          cachedMinPitch,
+          cachedMaxPitch,
+        );
+
+        const finalTargetPitch = Clamp(
+          V3.Lerp(0, directTrackedPitch, trackedPlayerPitchOffsetScale),
+          cachedMinPitch,
+          cachedMaxPitch,
+        );
+
+        finalCamRot = V3.Create(finalTargetPitch, finalCamRot.y, 0);
+
+        smoothedTrackedPitch = finalTargetPitch;
+      } else {
+        smoothedCollisionCamPos = null;
+        previousDesiredTrackedCamPos = null;
       }
 
       SetCameraTransform(
@@ -6778,6 +7001,18 @@ export namespace PCT {
     Player.RemoveById(pid);
   }
 
+  export function PCTOnRayCastHit(
+    eventPlayer: mod.Player,
+    eventPoint: mod.Vector,
+    eventNormal: mod.Vector,
+  ): void {
+    FreeCamCollision.OnHit(eventPlayer, eventPoint, eventNormal);
+  }
+
+  export function PCTOnRayCastMissed(eventPlayer: mod.Player): void {
+    FreeCamCollision.OnMissed(eventPlayer);
+  }
+
   export function PCTOnPortalGadgetAimStart(player: mod.Player): void {
     const ps = Player.GetOrCreate(player);
     if (!ps?.directorState) return;
@@ -6813,7 +7048,7 @@ export namespace PCT {
 }
 
 //***************************************** */
-// EXPERIENCE SCRIPT
+// EXPERIENCE SCRIPT - EVENT HOOKS
 // Mandatory: Include the following BF6 Portal API functions and call the PCT function at top level of each.
 //***************************************** */
 
@@ -6878,9 +7113,23 @@ export function OnPlayerUIButtonEvent(
   });
 }
 
+export function OnRayCastHit(
+  eventPlayer: mod.Player,
+  eventPoint: mod.Vector,
+  eventNormal: mod.Vector,
+): void {
+  PCT.PCTOnRayCastHit(eventPlayer, eventPoint, eventNormal);
+}
+
+export function OnRayCastMissed(eventPlayer: mod.Player): void {
+  PCT.PCTOnRayCastMissed(eventPlayer);
+}
+
 export function OnPortalGadgetAimStart(eventPlayer: mod.Player): void {
   if (!mod.IsPlayerValid(eventPlayer))
     console.log("Invalid player in OnPortalGadgetAimStart");
+
+  // NOTE: mod.OnPortalGadgetAimStart() is bugged. eventPlayer is always invalid.
 
   /*if (PCT.IsPlayerDirector(eventPlayer)) {
     PCT.PCTOnPortalGadgetAimStart(eventPlayer);
@@ -6891,6 +7140,8 @@ export function OnPortalGadgetAimStart(eventPlayer: mod.Player): void {
 export function OnPortalGadgetAimStop(eventPlayer: mod.Player): void {
   if (!mod.IsPlayerValid(eventPlayer))
     console.log("Invalid player in OnPortalGadgetAimStop");
+
+  // NOTE: mod.OnPortalGadgetAimStop() is bugged. eventPlayer is always invalid.
 
   /*if (PCT.IsPlayerDirector(eventPlayer)) {
     PCT.PCTOnPortalGadgetAimStop(eventPlayer);
