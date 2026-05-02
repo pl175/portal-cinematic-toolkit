@@ -1,16 +1,20 @@
 /************************
  * PORTAL CAMERA TOOLKIT (PCT)
  * BY NODONE
- * APRIL 13, 2026
+ * May 2, 2026
  *************************/
 
 /************************
  * PORTAL CAMERA TOOLKIT (PCT)
- * ERROR LOGGER NAMESPACE
+ * ERROR LOGGER
  *************************/
 
 export namespace PCT_ErrorLogger {
-  export function New(caller: string, message: string, errorNumber: number) {
+  export async function New(
+    caller: string,
+    message: string,
+    errorNumber: number,
+  ) {
     let callerTrace = "at <unknown>";
 
     const stack = new Error().stack;
@@ -31,31 +35,31 @@ export namespace PCT_ErrorLogger {
       mod.DisplayHighlightedWorldLogMessage(
         mod.Message("PCT_ERROR_OCCURED", errorNumber),
       );
-      mod.Wait(0.5);
+      await mod.Wait(0.5);
     }
   }
 }
 
 /************************
  * PORTAL CAMERA TOOLKIT (PCT)
- * WORLD ICON CLASS
+ * WORLD ICON
  *************************/
 
 interface WorldIconOptions {
   text?: mod.Message;
-  textEnabled?: boolean;
+  textVisible?: boolean;
   icon?: mod.WorldIconImages;
-  iconEnabled?: boolean;
+  iconVisible?: boolean;
   color?: mod.Vector;
-  teamOwner?: mod.Team;
-  playerOwner?: mod.Player;
+  teamReceiver?: mod.Team;
+  playerReceiver?: mod.Player;
 }
 
 interface WorldIconState extends WorldIconOptions {
   id: string;
   position: mod.Vector;
-  textEnabled: boolean;
-  iconEnabled: boolean;
+  textVisible: boolean;
+  iconVisible: boolean;
 }
 
 class PCT_WIM {
@@ -86,22 +90,22 @@ class PCT_WIM {
     return { icon, state };
   }
 
-  private applyOwner(
+  private applyReceiver(
     icon: mod.WorldIcon,
-    state: Pick<WorldIconState, "teamOwner" | "playerOwner">,
+    state: Pick<WorldIconState, "teamReceiver" | "playerReceiver">,
   ): void {
-    if (state.teamOwner !== undefined) {
-      mod.SetWorldIconOwner(icon, state.teamOwner);
+    if (state.teamReceiver !== undefined) {
+      mod.SetWorldIconOwner(icon, state.teamReceiver);
       return;
     }
 
-    if (state.playerOwner !== undefined) {
-      mod.SetWorldIconOwner(icon, state.playerOwner);
+    if (state.playerReceiver !== undefined) {
+      mod.SetWorldIconOwner(icon, state.playerReceiver);
     }
   }
 
   private applyState(icon: mod.WorldIcon, state: WorldIconState): void {
-    this.applyOwner(icon, state);
+    this.applyReceiver(icon, state);
     mod.SetWorldIconPosition(icon, state.position);
 
     if (state.text !== undefined) {
@@ -116,8 +120,8 @@ class PCT_WIM {
       mod.SetWorldIconColor(icon, state.color);
     }
 
-    mod.EnableWorldIconText(icon, state.textEnabled);
-    mod.EnableWorldIconImage(icon, state.iconEnabled);
+    mod.EnableWorldIconText(icon, state.textVisible);
+    mod.EnableWorldIconImage(icon, state.iconVisible);
   }
 
   createIcon(
@@ -139,12 +143,12 @@ class PCT_WIM {
       id,
       position,
       text: options?.text,
-      textEnabled: options?.textEnabled ?? false,
+      textVisible: options?.textVisible ?? false,
       icon: options?.icon,
-      iconEnabled: options?.iconEnabled ?? false,
+      iconVisible: options?.iconVisible ?? false,
       color: options?.color,
-      teamOwner: options?.teamOwner,
-      playerOwner: options?.playerOwner,
+      teamReceiver: options?.teamReceiver,
+      playerReceiver: options?.playerReceiver,
     };
 
     this.applyState(icon, state);
@@ -199,59 +203,59 @@ class PCT_WIM {
     mod.SetWorldIconColor(managed.icon, color);
   }
 
-  setTextEnabled(id: string, enabled: boolean): void {
+  setTextVisible(id: string, visible: boolean): void {
     const managed = this.getManaged(id);
     if (managed === null) {
       return;
     }
 
-    managed.state.textEnabled = enabled;
-    mod.EnableWorldIconText(managed.icon, enabled);
+    managed.state.textVisible = visible;
+    mod.EnableWorldIconText(managed.icon, visible);
   }
 
-  setIconEnabled(id: string, enabled: boolean): void {
+  setIconVisible(id: string, visible: boolean): void {
     const managed = this.getManaged(id);
     if (managed === null) {
       return;
     }
 
-    managed.state.iconEnabled = enabled;
-    mod.EnableWorldIconImage(managed.icon, enabled);
+    managed.state.iconVisible = visible;
+    mod.EnableWorldIconImage(managed.icon, visible);
   }
 
-  setEnabled(id: string, iconEnabled: boolean, textEnabled: boolean): void {
+  setVisible(id: string, iconVisible: boolean, textVisible: boolean): void {
     const managed = this.getManaged(id);
     if (managed === null) {
       return;
     }
 
-    managed.state.iconEnabled = iconEnabled;
-    managed.state.textEnabled = textEnabled;
+    managed.state.iconVisible = iconVisible;
+    managed.state.textVisible = textVisible;
 
-    mod.EnableWorldIconImage(managed.icon, iconEnabled);
-    mod.EnableWorldIconText(managed.icon, textEnabled);
+    mod.EnableWorldIconImage(managed.icon, iconVisible);
+    mod.EnableWorldIconText(managed.icon, textVisible);
   }
 
-  setTeamOwner(id: string, team: mod.Team): void {
+  setTeamReceiver(id: string, team: mod.Team): void {
     const managed = this.getManaged(id);
     if (managed === null) {
       return;
     }
 
-    managed.state.teamOwner = team;
-    managed.state.playerOwner = undefined;
+    managed.state.teamReceiver = team;
+    managed.state.playerReceiver = undefined;
 
     mod.SetWorldIconOwner(managed.icon, team);
   }
 
-  setPlayerOwner(id: string, player: mod.Player): void {
+  setPlayerReceiver(id: string, player: mod.Player): void {
     const managed = this.getManaged(id);
     if (managed === null) {
       return;
     }
 
-    managed.state.playerOwner = player;
-    managed.state.teamOwner = undefined;
+    managed.state.playerReceiver = player;
+    managed.state.teamReceiver = undefined;
 
     mod.SetWorldIconOwner(managed.icon, player);
   }
@@ -267,44 +271,14 @@ class PCT_WIM {
     this.iconStates.delete(id);
   }
 
-  private refreshIcon(id: string): void {
-    const managed = this.getManaged(id);
-    if (managed === null) {
-      return;
-    }
-
-    mod.EnableWorldIconImage(managed.icon, false);
-    mod.EnableWorldIconText(managed.icon, false);
-    this.applyState(managed.icon, managed.state);
-  }
-
-  refreshAllIcons(): void {
-    for (const id of this.iconStates.keys()) {
-      this.refreshIcon(id);
-    }
-  }
-
-  deleteAllIcons(): void {
-    for (const icon of this.icons.values()) {
-      mod.UnspawnObject(icon);
-    }
-
-    this.icons.clear();
-    this.iconStates.clear();
-  }
-
-  getIconCount(): number {
-    return this.icons.size;
-  }
-
-  hasIcon(id: string): boolean {
+  getIconExists(id: string): boolean {
     return this.icons.has(id);
   }
 }
 
 /************************
  * PORTAL CAMERA TOOLKIT (PCT)
- * UI NAMESPACE
+ * UI
  *************************/
 
 export namespace PCT_UI {
@@ -502,6 +476,11 @@ export namespace PCT_UI {
   function getWidgetOrError(name: string): mod.UIWidget {
     const widget = mod.FindUIWidgetWithName(name);
     if (!widget) {
+      void PCT_ErrorLogger.New(
+        getWidgetOrError.name,
+        `Failed to find widget with name: ${name}`,
+        1,
+      );
       throw new Error(`UI widget not found after creation: ${name}`);
     }
     return widget;
@@ -1379,17 +1358,22 @@ export namespace PCT_UI {
 
     const widgetName = mod.GetUIWidgetName(widget);
 
-    const handler = BUTTON_HANDLERS.get(widgetName);
-    if (!handler) return;
+    const buttonHandler = BUTTON_HANDLERS.get(widgetName);
+    if (!buttonHandler) return;
 
-    const runHandler = (): void => {
-      //TODO: CHECK IF NEEDS REMOVED
-      handler(player).catch((error: unknown) => {});
+    const runButtonHandler = (): void => {
+      buttonHandler(player).catch((error: unknown) => {
+        PCT_ErrorLogger.New(
+          OnButtonClick.name + " (" + runButtonHandler.name + ")",
+          `Button Handler failed: ${String(error)}`,
+          0,
+        );
+      });
     };
 
     const disableOnClick = BUTTON_DISABLE_ON_CLICK.get(widgetName) ?? true;
     if (!disableOnClick) {
-      runHandler();
+      runButtonHandler();
       return;
     }
 
@@ -1397,7 +1381,7 @@ export namespace PCT_UI {
     if (BUTTON_COOLDOWNS.has(lockKey)) return;
 
     BUTTON_COOLDOWNS.add(lockKey);
-    runHandler();
+    runButtonHandler();
 
     await mod.Wait(0.2);
     BUTTON_COOLDOWNS.delete(lockKey);
@@ -1406,7 +1390,7 @@ export namespace PCT_UI {
 
 /************************
  * PORTAL CAMERA TOOLKIT (PCT)
- * MOD NAMESPACE
+ * MAIN
  *************************/
 
 export namespace PCT {
@@ -1420,7 +1404,7 @@ export namespace PCT {
   }
 
   enum CameraType {
-    Point,
+    Path,
     Free,
     ThirdPerson,
   }
@@ -1431,9 +1415,22 @@ export namespace PCT {
     MenuMove,
   }
 
+  enum PathPointsStatus {
+    None,
+    Selected,
+    Moving,
+  }
+
   enum CameraTargetType {
     Player,
     Path,
+  }
+
+  enum DirectorStateType {
+    Idle,
+    CameraPathSetup,
+    CameraPathActive,
+    FreeCamActive,
   }
 
   /************************
@@ -1441,20 +1438,23 @@ export namespace PCT {
    *************************/
 
   type V3 = { x: number; y: number; z: number };
-  type XZ = { x: number; z: number };
 
   // Camera
 
   type CameraConfig = {
-    moveSpeed: number;
-    lookAheadDistance: number;
-    maxPitchUpDeg: number;
-    maxPitchDownDeg: number;
+    defaultMoveSpeed: number;
+    defaultLookAheadDistance: number;
+    defaultMaxPitchUpDeg: number;
+    defaultMaxPitchDownDeg: number;
   };
 
   type CameraState = {
     type: CameraType;
     isRunning: boolean;
+    speed: number;
+    lookAheadDistance: number;
+    maxPitchUpDeg: number;
+    maxPitchDownDeg: number;
     reset: boolean;
     freeCamIsTracking: boolean;
     freeCamIsFocusing: boolean;
@@ -1492,6 +1492,7 @@ export namespace PCT {
   };
 
   type PathPointConfig = {
+    defaultPointCreationDistance: number;
     defaultColor: mod.Vector;
     hoverColor: mod.Vector;
     menuDefaultColor: mod.Vector;
@@ -1501,23 +1502,22 @@ export namespace PCT {
     hoverIcon: mod.WorldIconImages;
   };
 
-  type PathPointState = {
-    locked: boolean;
-    inSelection: boolean;
-    isMoving: boolean;
-    previousAimedPoint: PathPoint | null;
-  };
-
   // Path
 
   type PathConfig = {
-    cornerRadius: number;
+    defaultCornerRadius: number;
     samplesPerCorner: number;
   };
 
   type PathState = {
     points: PathPoint[];
     menuPoints: PathPoint[];
+    cornerRadius: number;
+    locked: boolean;
+    previousAimedPoint: PathPoint | null;
+    inSelection: boolean;
+    isMoving: boolean;
+    pointCreationDistance: number;
   };
 
   // VFX Loop
@@ -1526,11 +1526,13 @@ export namespace PCT {
     vfx: mod.RuntimeSpawn_Common;
     weight: number;
     minDistance: number;
+    maxDistance: number;
   };
 
   type VFXConfig = {
     radius: number;
     spawnChance: number;
+    minMoveDistance: number;
     checkInterval: number;
   };
 
@@ -1538,18 +1540,42 @@ export namespace PCT {
     isRunning: boolean;
     previousCheckPos: V3 | null;
     inventory: VFXSpawnEntry[];
+    spawnChance: number;
   };
 
-  // UI (Path Point Info)
+  // UI (Path Points Info)
 
-  type TrackedInfoUIRow = {
-    id: TrackedPathPointRowId;
+  type TrackedPathPointsUIRow = {
+    id: TrackedPathPointsRowId;
+    key: PCT_UI.Text;
+    value: PCT_UI.Text;
+    lastRenderedValue: number;
+  };
+
+  type TrackedPathPointsData = {
+    status: PathPointsStatus;
+    creationDistanceMeters: number;
+    count: number;
+    totalLengthMeters: number;
+  };
+
+  type TrackedPathPointsRowId = keyof TrackedPathPointsData;
+
+  type TrackedPathPointsRowSchema = {
+    id: TrackedPathPointsRowId;
+    key: string;
+  };
+
+  // UI (Cam Settings Info)
+
+  type TrackedCamSettingsUIRow = {
+    id: TrackedCamSettingsRowId;
     key: PCT_UI.Text;
     value: PCT_UI.Text;
     lastRenderedValue: number | boolean | V3 | mod.Player | null;
   };
 
-  type TrackedPathPointData = {
+  type TrackedCamSettingsData = {
     cameraSpeed: number;
     maxPitchUpDeg: number;
     maxPitchDownDeg: number;
@@ -1557,12 +1583,13 @@ export namespace PCT {
     lookAheadDistance: number;
     cameraTargetType: CameraTargetType;
     cameraTarget: mod.Player | null;
+    vfxFrequencyPercent: number;
   };
 
-  type TrackedPathPointRowId = keyof TrackedPathPointData;
+  type TrackedCamSettingsRowId = keyof TrackedCamSettingsData;
 
-  type TrackedPathPointRowSchema = {
-    id: TrackedPathPointRowId;
+  type TrackedCamSettingsRowSchema = {
+    id: TrackedCamSettingsRowId;
     key: string;
     step: number;
     min?: number;
@@ -1572,11 +1599,6 @@ export namespace PCT {
   // Player State
 
   type PlayerUI = {
-    selectionUI: {
-      root?: PCT_UI.Container | null;
-      buttons?: PCT_UI.Button[] | null;
-      trackedInfo?: TrackedInfoUIRow[] | null;
-    };
     targetSelectionUI: {
       root?: PCT_UI.Container | null;
       playerLabel?: PCT_UI.Text | null;
@@ -1590,21 +1612,38 @@ export namespace PCT {
       root?: PCT_UI.Container | null;
       digitButtons?: PCT_UI.Button[] | null;
       inputEnabled?: boolean;
+      closeButton?: PCT_UI.Button | null;
     };
     directorMenuUI: {
       root?: PCT_UI.Container | null;
+    };
+    pathCameraSetupUI: {
+      pathPointsMenuRoot?: PCT_UI.Container | null;
+      cameraControlMenuRoot?: PCT_UI.Container | null;
+      movePointTipRoot?: PCT_UI.Container | null;
+      buttons?: PCT_UI.Button[] | null;
+      trackedPathPointsInfo?: TrackedPathPointsUIRow[] | null;
+      trackedCamSettingsInfo?: TrackedCamSettingsUIRow[] | null;
+      controlNoticeRoot?: PCT_UI.Container | null;
+      pathMoveTipShown?: boolean;
     };
   };
 
   type PlayerActionStateBool = {
     isCrouching: boolean;
     isFiring: boolean;
+    isAiming: boolean;
     isProne: boolean;
     isJumping: boolean;
     isInteracting: boolean;
+    isAimingPortalGadget: boolean;
+    isFiringPortalGadget: boolean;
+    isPortalLaserActive: boolean;
   };
 
   type DirectorState = {
+    currentStatus: DirectorStateType;
+    pathCameraInteractPoint: mod.InteractPoint | null;
     actionState: PlayerActionStateBool;
   };
 
@@ -1624,31 +1663,36 @@ export namespace PCT {
 
   let _fixedCameraId: number;
   let _directorPasscode: string;
-  let _showPlayerNametags: boolean;
+  //let _showPlayerNametags: boolean; // mod.AddUIIcon appears to be bugged
   let _config: Config;
 
   let _directorControlRoomSpawnPos: V3;
+  let _directorControlRoomSpawnedObjects: mod.SpatialObject[];
 
   let _cameraState: CameraState;
-  let _pathPointState: PathPointState;
   let _pathState: PathState;
   let _vfxState: VFXState;
 
   let _cameraObject: mod.FixedCamera;
+  let _cameraObjectInitialPos: V3;
 
   let _directorInteractPoint: mod.InteractPoint | null;
   let _freeCamInteractPoint: mod.InteractPoint | null;
 
-  let _trackedPathPointInfo: TrackedPathPointData;
-  let _trackedPathPointInfoUIRows: TrackedPathPointRowSchema[];
+  let _trackedCamSettingsInfo: TrackedCamSettingsData;
+  let _trackedCamSettingsInfoUIRows: TrackedCamSettingsRowSchema[];
+
+  let _trackedPathPointsInfo: TrackedPathPointsData;
+  let _trackedPathPointsInfoUIRows: TrackedPathPointsRowSchema[];
 
   /************************
    * Private Constants
    *************************/
 
-  const oneTick = 0.033; // 0.033 assuming 30hz; 33ms per tick
-  const twoTicks = oneTick * 2;
-  const threeTicks = oneTick * 3;
+  const TICK_SECONDS = 0.033; // 0.033 assuming 30hz; 33ms per tick
+
+  const DT = TICK_SECONDS; // Delta Time per tick
+  const SD = 0.1; // Settle Delay to wait for logic
 
   const rtc = mod.RuntimeSpawn_Common;
 
@@ -1700,7 +1744,7 @@ export namespace PCT {
     DistanceBetween(
       a: V3,
       b: V3,
-      distanceType: DistanceType,
+      distanceType?: DistanceType,
       NumberOfDecimals?: number,
     ): { whole: number; fraction: number; full: number } {
       const dx = a.x - b.x;
@@ -1757,13 +1801,13 @@ export namespace PCT {
    * Initializes the Portal Camera Toolkit (PCT) module. Should be called at the top of OnGameModeStarted().
    * @param fixedCameraId - The id of the Fixed Camera object created in Godot. This must be a unique id not shared with any other Godot object. The Fixed Camera object in Godot should be positioned at a location reachable for the player to interact with it to activate Director settings.
    * @param directorPasscode - Passcode to become Director when interacting with the Fixed Camera initial position. This should be a numeric string, e.g. "1234".
-   * @param showPlayerNametags - Whether to show player nametags. Team 3 of 1 player is required for nametags to show.
+   * @param showPlayerNametags - DISABLED as mod.AddUIIcon appears to be bugged *** Whether to show player nametags. Team 3 of 1 player is required for nametags to show.
    * @param defaultConfig - Optional default configuration for the PCT module.
    */
   export function Initialize(
     fixedCameraId: number,
     directorPasscode: string,
-    showPlayerNametags: boolean,
+    //showPlayerNametags: boolean,
     defaultConfig?: Partial<Config>,
   ): void {
     if (_config) {
@@ -1772,29 +1816,15 @@ export namespace PCT {
     CreateConfig(
       fixedCameraId,
       directorPasscode,
-      showPlayerNametags,
+      //showPlayerNametags,
       defaultConfig,
     );
 
     SpawnDirectorControlRoom();
+  }
 
-    _directorInteractPoint = mod.SpawnObject(
-      rtc.InteractPoint,
-      mod.GetObjectPosition(_cameraObject),
-      Vector.Zero(),
-    ) as mod.InteractPoint;
-
-    PCT_WIM.init().createIcon(
-      "director-panel",
-      mod.GetObjectPosition(_cameraObject),
-      {
-        icon: mod.WorldIconImages.SquadPing,
-        iconEnabled: true,
-        text: mod.Message("PCT_INTERACT_HERE"),
-        textEnabled: true,
-        color: PCT_UI.COLORS.RED,
-      },
-    );
+  export function IsPlayerDirector(player: mod.Player): boolean {
+    return Player.GetIsDirector(player);
   }
 
   /************************
@@ -1804,24 +1834,54 @@ export namespace PCT {
   function CreateConfig(
     fixedCameraId: number,
     directorPasscode: string,
-    showPlayerNametags: boolean,
+    //showPlayerNametags: boolean,
     defaultConfig?: Partial<Config>,
   ) {
     // Core Config
 
     _fixedCameraId = fixedCameraId;
     _directorPasscode = directorPasscode;
-    _showPlayerNametags = showPlayerNametags;
+    _cameraObject = mod.GetFixedCamera(_fixedCameraId);
+    _cameraObjectInitialPos = Vector.ToV3(mod.GetObjectPosition(_cameraObject));
+
+    //_showPlayerNametags = showPlayerNametags; // mod.AddUIIcon appears to be bugged
+
+    // Director Interaction Point
+
+    _directorInteractPoint = mod.SpawnObject(
+      rtc.InteractPoint,
+      V3.ToVector(_cameraObjectInitialPos),
+      Vector.Zero(),
+    ) as mod.InteractPoint;
+
+    PCT_WIM.init().createIcon(
+      "director-panel",
+      V3.ToVector(_cameraObjectInitialPos),
+      {
+        icon: mod.WorldIconImages.SquadPing,
+        iconVisible: true,
+        text: mod.Message("PCT_INTERACT_HERE"),
+        textVisible: true,
+        color: PCT_UI.COLORS.RED,
+      },
+    );
+
+    // General Config
 
     _config = {
       uiPrefix: defaultConfig?.uiPrefix ?? "pct",
       cameraConfig: {
-        moveSpeed: defaultConfig?.cameraConfig?.moveSpeed ?? 6,
-        lookAheadDistance: defaultConfig?.cameraConfig?.lookAheadDistance ?? 10,
-        maxPitchUpDeg: defaultConfig?.cameraConfig?.maxPitchUpDeg ?? 15,
-        maxPitchDownDeg: defaultConfig?.cameraConfig?.maxPitchDownDeg ?? 15,
+        defaultMoveSpeed: defaultConfig?.cameraConfig?.defaultMoveSpeed ?? 6,
+        defaultLookAheadDistance:
+          defaultConfig?.cameraConfig?.defaultLookAheadDistance ?? 20,
+        defaultMaxPitchUpDeg:
+          defaultConfig?.cameraConfig?.defaultMaxPitchUpDeg ?? 10,
+        defaultMaxPitchDownDeg:
+          defaultConfig?.cameraConfig?.defaultMaxPitchDownDeg ?? 10,
       },
       pathPointConfig: {
+        defaultPointCreationDistance:
+          defaultConfig?.pathPointConfig?.defaultPointCreationDistance ?? 5,
         defaultColor: mod.CreateVector(0, 0.1, 0), // Hex: #002600
         hoverColor: mod.CreateVector(0, 1, 0), // Hex: #00FF00
         menuDefaultColor: mod.CreateVector(0, 0.1, 0), // Hex: #002600
@@ -1831,12 +1891,14 @@ export namespace PCT {
         hoverIcon: mod.WorldIconImages.FilledPing,
       },
       pathConfig: {
-        cornerRadius: defaultConfig?.pathConfig?.cornerRadius ?? 30,
-        samplesPerCorner: defaultConfig?.pathConfig?.samplesPerCorner ?? 16,
+        defaultCornerRadius:
+          defaultConfig?.pathConfig?.defaultCornerRadius ?? 80,
+        samplesPerCorner: defaultConfig?.pathConfig?.samplesPerCorner ?? 40,
       },
       vfxConfig: {
-        radius: defaultConfig?.vfxConfig?.radius ?? 50,
-        spawnChance: defaultConfig?.vfxConfig?.spawnChance ?? 0.5,
+        radius: defaultConfig?.vfxConfig?.radius ?? 350, // Consider changing the inventory min and max distances below instead of changing this radius
+        minMoveDistance: defaultConfig?.vfxConfig?.minMoveDistance ?? 0,
+        spawnChance: defaultConfig?.vfxConfig?.spawnChance ?? 0,
         checkInterval: defaultConfig?.vfxConfig?.checkInterval ?? 0.25,
       },
       ...defaultConfig,
@@ -1844,10 +1906,12 @@ export namespace PCT {
 
     // State
 
-    _cameraObject = mod.GetFixedCamera(_fixedCameraId);
-
     _cameraState = {
       type: CameraType.Free,
+      speed: _config.cameraConfig.defaultMoveSpeed,
+      lookAheadDistance: _config.cameraConfig.defaultLookAheadDistance,
+      maxPitchUpDeg: _config.cameraConfig.defaultMaxPitchUpDeg,
+      maxPitchDownDeg: _config.cameraConfig.defaultMaxPitchDownDeg,
       isRunning: false,
       reset: false,
       freeCamIsTracking: false,
@@ -1855,153 +1919,207 @@ export namespace PCT {
       freeCamIsDefocusing: false,
       freeCamIsInFocus: false,
       target: {
-        type: CameraTargetType.Player,
+        type: CameraTargetType.Path,
         playerObject: null,
         trackingActive: false,
         previousTargetPlayerObject: null,
       },
     };
 
-    _pathPointState = {
-      locked: false,
-      inSelection: false,
-      isMoving: false,
-      previousAimedPoint: null,
-    };
-
     _pathState = {
       points: [],
       menuPoints: [],
+      cornerRadius: _config.pathConfig.defaultCornerRadius,
+      locked: false,
+      previousAimedPoint: null,
+      inSelection: false,
+      isMoving: false,
+      pointCreationDistance:
+        _config.pathPointConfig.defaultPointCreationDistance,
     };
 
     _vfxState = {
       isRunning: false,
       previousCheckPos: null,
+      spawnChance: _config.vfxConfig.spawnChance,
+      // I tried to optimize the inventory for good visuals, but feel free to play around with this and add any VFX you think would look good in the mix.
       inventory: [
         {
           vfx: rtc.FX_Gadget_C4_Explosives_Detonation,
           weight: 15,
           minDistance: 5,
+          maxDistance: 40,
         },
         {
           vfx: rtc.FX_ArtilleryStrike_Explosion_GS,
           weight: 10,
           minDistance: 10,
-        },
-        {
-          vfx: rtc.FX_Autocannon_30mm_AP_Hit_GS,
-          weight: 15,
-          minDistance: 2,
+          maxDistance: 40,
         },
         {
           vfx: rtc.FX_CAP_AmbWar_Rocket_Strike,
-          weight: 8,
-          minDistance: 40,
+          weight: 5,
+          minDistance: 180,
+          maxDistance: 300,
         },
         {
           vfx: rtc.FX_Carrier_Explosion_Dist,
           weight: 5,
-          minDistance: 100,
+          minDistance: 250,
+          maxDistance: 350,
         },
         {
           vfx: rtc.FX_CivCar_SUV_Explosion,
           weight: 10,
           minDistance: 10,
+          maxDistance: 50,
         },
         {
           vfx: rtc.FX_Gadget_AirburstLauncher_Detonation,
           weight: 10,
           minDistance: 2,
+          maxDistance: 40,
         },
         {
           vfx: rtc.FX_Gadget_SmokeBarrage_Cluster_Det,
-          weight: 5,
+          weight: 6,
           minDistance: 2,
+          maxDistance: 40,
         },
         {
           vfx: rtc.FX_Gadget_SupplyDrop_Destruction,
           weight: 50,
           minDistance: 1,
+          maxDistance: 40,
         },
         {
           vfx: rtc.FX_Grenade_Fragmentation_ImpactGrenade_Detonation,
           weight: 10,
           minDistance: 2,
+          maxDistance: 40,
         },
         {
           vfx: rtc.FX_LoadoutCrate_AirSpawn,
           weight: 15,
           minDistance: 10,
+          maxDistance: 40,
         },
         {
           vfx: rtc.FX_Missile_MBTLAW_Hit,
           weight: 5,
-          minDistance: 15,
+          minDistance: 30,
+          maxDistance: 80,
         },
       ],
     };
 
     // UI
 
-    _trackedPathPointInfo = {
-      cameraSpeed: _config.cameraConfig.moveSpeed,
-      maxPitchUpDeg: _config.cameraConfig.maxPitchUpDeg,
-      maxPitchDownDeg: _config.cameraConfig.maxPitchDownDeg,
-      cornerRadius: _config.pathConfig.cornerRadius,
-      lookAheadDistance: _config.cameraConfig.lookAheadDistance,
+    _trackedCamSettingsInfo = {
+      cameraSpeed: _cameraState.speed,
+      maxPitchUpDeg: _cameraState.maxPitchUpDeg,
+      maxPitchDownDeg: _cameraState.maxPitchDownDeg,
+      cornerRadius: _pathState.cornerRadius,
+      lookAheadDistance: _cameraState.lookAheadDistance,
       cameraTargetType: _cameraState.target.type,
       cameraTarget: _cameraState.target.playerObject,
+      vfxFrequencyPercent: _vfxState.spawnChance * 100,
     };
 
-    _trackedPathPointInfoUIRows = [
+    _trackedCamSettingsInfoUIRows = [
       {
         id: "cameraSpeed",
-        key: "TRACKED_CAMERA_SPEED",
+        key: "PCT_TRACKED_CAMERA_SPEED",
         step: 1,
         min: 0,
-        max: 30,
+        max: 40,
       },
       {
         id: "maxPitchUpDeg",
-        key: "TRACKED_MAX_PITCH_UP",
+        key: "PCT_TRACKED_MAX_PITCH_UP",
         step: 5,
         min: 0,
         max: 90,
       },
       {
         id: "maxPitchDownDeg",
-        key: "TRACKED_MAX_PITCH_DOWN",
+        key: "PCT_TRACKED_MAX_PITCH_DOWN",
         step: 5,
         min: 0,
         max: 90,
       },
       {
         id: "cornerRadius",
-        key: "TRACKED_CORNER_RADIUS",
+        key: "PCT_TRACKED_CORNER_RADIUS",
         step: 5,
         min: 0,
         max: 100,
       },
       {
         id: "lookAheadDistance",
-        key: "TRACKED_LOOK_AHEAD_DISTANCE",
+        key: "PCT_TRACKED_LOOK_AHEAD_DISTANCE",
         step: 1,
         min: 1,
-        max: 20,
+        max: 40,
       },
       {
         id: "cameraTargetType",
-        key: "TRACKED_CAMERA_TARGET_TYPE",
+        key: "PCT_TRACKED_CAMERA_TARGET_TYPE",
         step: 1,
         min: 0,
         max: Object.keys(CameraTargetType).length / 2 - 1,
       },
-      { id: "cameraTarget", key: "TRACKED_CAMERA_TARGET", step: 1, min: 0 },
+      {
+        id: "cameraTarget",
+        key: "PCT_TRACKED_CAMERA_TARGET",
+        step: 1,
+        min: 0,
+      },
+      {
+        id: "vfxFrequencyPercent",
+        key: "PCT_TRACKED_VFX_FREQUENCY",
+        step: 10,
+        min: 0,
+        max: 100,
+      },
+    ];
+
+    _trackedPathPointsInfo = {
+      status: PathPointsStatus.None,
+      creationDistanceMeters:
+        _config.pathPointConfig.defaultPointCreationDistance,
+      count: 0,
+      totalLengthMeters: 0,
+    };
+
+    _trackedPathPointsInfoUIRows = [
+      {
+        id: "status",
+        key: "PCT_TRACKED_PATH_POINTS_STATUS",
+      },
+      {
+        id: "creationDistanceMeters",
+        key: "PCT_TRACKED_PATH_POINTS_CREATION_DISTANCE",
+      },
+      {
+        id: "count",
+        key: "PCT_TRACKED_PATH_POINTS_COUNT",
+      },
+      {
+        id: "totalLengthMeters",
+        key: "PCT_TRACKED_PATH_POINTS_TOTAL_LENGTH",
+      },
     ];
   }
 
-  function SpawnDirectorControlRoom(): number[] {
-    const roomCenterPos = V3.Create(22, 0, 22); // TODO: Per map for water maps
+  function SpawnDirectorControlRoom(skySpawn?: boolean): mod.SpatialObject[] {
+    skySpawn = skySpawn ?? false;
+
+    const yOffset = skySpawn ? 300 : -50;
+    const roomCenterPos = V3.Add(
+      _cameraObjectInitialPos,
+      V3.Create(0, yOffset, 0),
+    );
     _directorControlRoomSpawnPos = roomCenterPos;
 
     const room = {
@@ -2055,14 +2173,14 @@ export namespace PCT {
     const frontZ = roomCenterPos.z + halfInterior;
     const backZ = roomCenterPos.z - halfInterior;
 
-    const spawned: number[] = [];
+    const spawned: mod.SpatialObject[] = [];
 
     function SpawnObject(
       rtc: mod.RuntimeSpawn_Common,
       pos: V3,
       rot: V3,
       scale?: { uniformScale?: number; nonUniformScale?: V3 },
-    ): number {
+    ): mod.SpatialObject {
       if (scale?.nonUniformScale) {
         return mod.SpawnObject(
           rtc,
@@ -2073,7 +2191,7 @@ export namespace PCT {
             scale.nonUniformScale.y,
             scale.nonUniformScale.z,
           ),
-        ) as number;
+        );
       }
 
       if (scale?.uniformScale !== undefined) {
@@ -2086,14 +2204,14 @@ export namespace PCT {
             scale.uniformScale,
             scale.uniformScale,
           ),
-        ) as number;
+        );
       }
 
       return mod.SpawnObject(
         rtc,
         mod.CreateVector(pos.x, pos.y, pos.z),
         mod.CreateVector(rot.x, rot.y, rot.z),
-      ) as number;
+      );
     }
 
     const walls = [
@@ -2171,7 +2289,16 @@ export namespace PCT {
       ),
     );
 
+    _directorControlRoomSpawnedObjects = spawned;
+
     return spawned;
+  }
+
+  function UnspawnDirectorControlRoom(): void {
+    for (const obj of _directorControlRoomSpawnedObjects) {
+      mod.UnspawnObject(obj);
+    }
+    _directorControlRoomSpawnedObjects = [];
   }
 
   /************************
@@ -2187,7 +2314,6 @@ export namespace PCT {
     public isDirector: boolean;
     public enteredDirectorCode: string;
     public ui: PlayerUI;
-    public stateBool: PlayerActionStateBool;
     public directorState: DirectorState | null;
 
     private constructor(playerObject: mod.Player, playerId: number) {
@@ -2197,17 +2323,12 @@ export namespace PCT {
       this.enteredDirectorCode = "";
       this.directorState = null;
       this.ui = {
-        selectionUI: {},
         targetSelectionUI: {},
         directorCodeEntryUI: {},
         directorMenuUI: {},
-      };
-      this.stateBool = {
-        isCrouching: Player.IsCrouching(playerObject),
-        isFiring: Player.IsFiring(playerObject),
-        isProne: Player.IsProne(playerObject),
-        isJumping: Player.IsJumping(playerObject),
-        isInteracting: Player.IsInteracting(playerObject),
+        pathCameraSetupUI: {
+          pathMoveTipShown: false,
+        },
       };
     }
 
@@ -2220,7 +2341,6 @@ export namespace PCT {
       const pid = Player.GetId(player);
 
       if (pid === null) {
-        PCT_ErrorLogger.New(Player.Get.name, "Player state is invalid", 3);
         return null;
       }
 
@@ -2236,7 +2356,7 @@ export namespace PCT {
       const pid = Player.GetId(player);
       if (pid === null) return null;
 
-      let existing = Player.registry[pid] ?? null;
+      const existing = Player.registry[pid] ?? null;
       if (existing) {
         existing.playerObject = player;
         return existing;
@@ -2270,7 +2390,13 @@ export namespace PCT {
       return Player.assignedDirectorPlayerId;
     }
 
-    public static GetBool(
+    public static GetDirectorPlayerObject(): mod.Player | null {
+      const directorId = Player.GetAssignedDirectorPlayerId();
+      if (directorId === null) return null;
+      return Player.GetById(directorId)?.playerObject ?? null;
+    }
+
+    public static GetStateBool(
       player: mod.Player,
       state: mod.SoldierStateBool,
     ): boolean {
@@ -2278,7 +2404,7 @@ export namespace PCT {
       return mod.GetSoldierState(player, state);
     }
 
-    public static GetVector(
+    public static GetStateVector(
       player: mod.Player,
       state: mod.SoldierStateVector,
     ): V3 {
@@ -2291,65 +2417,116 @@ export namespace PCT {
       return ps ? ps.isDirector : false;
     }
 
-    public static SetIsDirector(player: mod.Player, value: boolean): void {
+    public static AssignAsDirector(player: mod.Player): void {
       const ps = Player.GetOrCreate(player);
       if (!ps) return;
 
-      if (value) {
-        const assignedId = Player.assignedDirectorPlayerId;
-        if (assignedId !== null && assignedId !== ps.playerId) {
-          PCT_ErrorLogger.New(
-            Player.SetIsDirector.name,
-            "Director is already assigned.",
-            2,
-          );
-          return;
-        }
+      const assignedId = Player.assignedDirectorPlayerId;
+      if (assignedId !== null && assignedId !== ps.playerId) {
+        PCT_ErrorLogger.New(
+          Player.AssignAsDirector.name,
+          "Director is already assigned.",
+          1,
+        );
+        return;
       }
 
-      ps.isDirector = value;
+      ps.isDirector = true;
 
-      let msgLabel: string;
+      Player.assignedDirectorPlayerId = ps.playerId;
+      const msgLabel = "PCT_DIRECTOR_ASSIGNED";
 
-      if (value) {
-        Player.assignedDirectorPlayerId = ps.playerId;
-        msgLabel = "PCT_DIRECTOR_ASSIGNED";
+      ps.directorState = {
+        currentStatus: DirectorStateType.Idle,
+        pathCameraInteractPoint: null,
+        actionState: {
+          isCrouching: Player.IsCrouching(player),
+          isFiring: Player.IsFiring(player),
+          isAiming: Player.IsAiming(player),
+          isProne: Player.IsProne(player),
+          isJumping: Player.IsJumping(player),
+          isInteracting: Player.IsInteracting(player),
+          isAimingPortalGadget: false,
+          isFiringPortalGadget: false,
+          isPortalLaserActive: true,
+        },
+      };
 
-        ps.directorState = {
-          actionState: {
-            isCrouching: Player.IsCrouching(player),
-            isFiring: Player.IsFiring(player),
-            isProne: Player.IsProne(player),
-            isJumping: Player.IsJumping(player),
-            isInteracting: Player.IsInteracting(player),
-          },
-        };
-      } else {
-        if (Player.assignedDirectorPlayerId === ps.playerId) {
-          Player.assignedDirectorPlayerId = null;
-        }
-
-        msgLabel = "PCT_DIRECTOR_UNASSIGNED";
-        ps.directorState = null;
-      }
+      Player.SetIncomingDamageFactor(player, 0);
 
       mod.DisplayHighlightedWorldLogMessage(mod.Message(msgLabel, player));
     }
 
+    public static UnassignAsDirector(pid: number): void {
+      const ps = Player.GetById(pid);
+      if (!ps) return;
+
+      const wasAssignedDirector = Player.assignedDirectorPlayerId === pid;
+      const player = ps.playerObject;
+
+      if (mod.IsPlayerValid(player)) {
+        Player.SetIncomingDamageFactor(player, 100);
+      }
+
+      ps.isDirector = false;
+      ps.directorState = null;
+      ps.enteredDirectorCode = "";
+
+      if (wasAssignedDirector) {
+        Player.assignedDirectorPlayerId = null;
+
+        if (mod.IsPlayerValid(player)) {
+          mod.DisplayHighlightedWorldLogMessage(
+            mod.Message("PCT_DIRECTOR_UNASSIGNED", player),
+          );
+        }
+      }
+    }
+
+    public static GetDirectorCurrentStatus(
+      player: mod.Player,
+    ): DirectorStateType | null {
+      if (!Player.GetIsDirector(player)) return null;
+
+      const ps = Player.Get(player);
+      if (!ps || !ps.directorState) return null;
+      return ps.directorState.currentStatus;
+    }
+
+    public static SetDirectorCurrentStatus(
+      player: mod.Player,
+      state: DirectorStateType,
+    ): void {
+      if (!Player.GetIsDirector(player)) return;
+
+      const ps = Player.Get(player);
+      if (!ps || !ps.directorState) return;
+
+      ps.directorState.currentStatus = state;
+    }
+
+    public static SetIncomingDamageFactor(
+      player: mod.Player,
+      factor: number,
+    ): void {
+      if (!mod.IsPlayerValid(player)) return;
+      mod.SetPlayerIncomingDamageFactor(player, factor);
+    }
+
     public static IsAI(player: mod.Player): boolean {
-      return Player.GetBool(player, mod.SoldierStateBool.IsAISoldier);
+      return Player.GetStateBool(player, mod.SoldierStateBool.IsAISoldier);
     }
 
     public static IsAlive(player: mod.Player): boolean {
-      return Player.GetBool(player, mod.SoldierStateBool.IsAlive);
+      return Player.GetStateBool(player, mod.SoldierStateBool.IsAlive);
     }
 
     public static IsDead(player: mod.Player): boolean {
-      return Player.GetBool(player, mod.SoldierStateBool.IsDead);
+      return Player.GetStateBool(player, mod.SoldierStateBool.IsDead);
     }
 
     public static IsManDown(player: mod.Player): boolean {
-      return Player.GetBool(player, mod.SoldierStateBool.IsManDown);
+      return Player.GetStateBool(player, mod.SoldierStateBool.IsManDown);
     }
 
     public static IsDeployed(player: mod.Player): boolean {
@@ -2357,6 +2534,13 @@ export namespace PCT {
         Player.IsAlive(player) &&
         !Player.IsDead(player) &&
         !Player.IsManDown(player)
+      );
+    }
+
+    public static IsInWater(player: mod.Player): boolean {
+      return (
+        Player.IsDeployed(player) &&
+        Player.GetStateBool(player, mod.SoldierStateBool.IsInWater)
       );
     }
 
@@ -2368,68 +2552,166 @@ export namespace PCT {
 
     public static GetPosition(player: mod.Player): V3 {
       return Player.IsDeployed(player)
-        ? Player.GetVector(player, mod.SoldierStateVector.GetPosition)
+        ? Player.GetStateVector(player, mod.SoldierStateVector.GetPosition)
         : V3.Zero();
     }
 
     public static GetEyePosition(player: mod.Player): V3 {
       return Player.IsDeployed(player)
-        ? Player.GetVector(player, mod.SoldierStateVector.EyePosition)
+        ? Player.GetStateVector(player, mod.SoldierStateVector.EyePosition)
         : V3.Zero();
     }
 
     public static GetFacingDirection(player: mod.Player): V3 {
       return Player.IsDeployed(player)
-        ? Player.GetVector(player, mod.SoldierStateVector.GetFacingDirection)
+        ? Player.GetStateVector(
+            player,
+            mod.SoldierStateVector.GetFacingDirection,
+          )
         : V3.Zero();
     }
 
     public static GetLinearVelocity(player: mod.Player): V3 {
       return Player.IsDeployed(player)
-        ? Player.GetVector(player, mod.SoldierStateVector.GetLinearVelocity)
+        ? Player.GetStateVector(
+            player,
+            mod.SoldierStateVector.GetLinearVelocity,
+          )
         : V3.Zero();
     }
 
     public static IsJumping(player: mod.Player): boolean {
       return (
         Player.IsDeployed(player) &&
-        Player.GetBool(player, mod.SoldierStateBool.IsJumping)
+        Player.GetStateBool(player, mod.SoldierStateBool.IsJumping)
       );
     }
 
     public static IsCrouching(player: mod.Player): boolean {
       return (
         Player.IsDeployed(player) &&
-        Player.GetBool(player, mod.SoldierStateBool.IsCrouching)
+        Player.GetStateBool(player, mod.SoldierStateBool.IsCrouching)
       );
     }
 
     public static IsSprinting(player: mod.Player): boolean {
       return (
         Player.IsDeployed(player) &&
-        Player.GetBool(player, mod.SoldierStateBool.IsSprinting)
+        Player.GetStateBool(player, mod.SoldierStateBool.IsSprinting)
       );
     }
 
     public static IsProne(player: mod.Player): boolean {
       return (
         Player.IsDeployed(player) &&
-        Player.GetBool(player, mod.SoldierStateBool.IsProne)
+        Player.GetStateBool(player, mod.SoldierStateBool.IsProne)
       );
     }
 
     public static IsFiring(player: mod.Player): boolean {
       return (
         Player.IsDeployed(player) &&
-        Player.GetBool(player, mod.SoldierStateBool.IsFiring)
+        Player.GetStateBool(player, mod.SoldierStateBool.IsFiring)
+      );
+    }
+
+    public static IsAiming(player: mod.Player): boolean {
+      return (
+        Player.IsDeployed(player) &&
+        Player.GetStateBool(player, mod.SoldierStateBool.IsZooming)
       );
     }
 
     public static IsInteracting(player: mod.Player): boolean {
       return (
         Player.IsDeployed(player) &&
-        Player.GetBool(player, mod.SoldierStateBool.IsInteracting)
+        Player.GetStateBool(player, mod.SoldierStateBool.IsInteracting)
       );
+    }
+
+    public static RemoveAllEquipment(player: mod.Player): void {
+      if (!Player.IsDeployed(player)) return;
+
+      mod.RemoveEquipment(player, mod.InventorySlots.Callins);
+      mod.RemoveEquipment(player, mod.InventorySlots.ClassGadget);
+      mod.RemoveEquipment(player, mod.InventorySlots.GadgetOne);
+      mod.RemoveEquipment(player, mod.InventorySlots.GadgetTwo);
+      mod.RemoveEquipment(player, mod.InventorySlots.MeleeWeapon);
+      mod.RemoveEquipment(player, mod.InventorySlots.PrimaryWeapon);
+      mod.RemoveEquipment(player, mod.InventorySlots.SecondaryWeapon);
+      mod.RemoveEquipment(player, mod.InventorySlots.Throwable);
+    }
+
+    public static GivePortalGadget(player: mod.Player): void {
+      if (!Player.IsDeployed(player)) return;
+      Player.RemoveAllEquipment(player);
+
+      //TODO re-introduce Portal Gadget once onZoom event function fixed by Battlefield Portal team
+
+      /*mod.AddEquipment(
+        player,
+        mod.Gadgets.Misc_PortalGadget,
+        mod.InventorySlots.GadgetOne,
+      );*/
+      mod.AddEquipment(
+        player,
+        mod.Weapons.Sidearm_ES_57,
+        mod.InventorySlots.SecondaryWeapon,
+      );
+      mod.ForceSwitchInventory(
+        player,
+        /*mod.InventorySlots.GadgetOne*/ mod.InventorySlots.SecondaryWeapon,
+      );
+    }
+
+    public static RemovePortalGadget(player: mod.Player): void {
+      if (!Player.IsDeployed(player)) return;
+      mod.RemoveEquipment(player, mod.Gadgets.Misc_PortalGadget);
+    }
+
+    public static GetAimedPathPoint(
+      player: mod.Player,
+      maxAngleDeg = 4,
+      maxDistance = 200,
+    ): PathPoint | null {
+      if (!mod.IsPlayerValid(player)) return null;
+
+      const eyePos = Player.GetEyePosition(player);
+      const facing = V3.Normalize(Player.GetFacingDirection(player));
+
+      const maxAngleRad = (maxAngleDeg * Math.PI) / 180;
+      const minDot = Math.cos(maxAngleRad);
+
+      let bestPoint: PathPoint | null = null;
+      let bestDot = -1;
+      let bestDist = Number.MAX_VALUE;
+
+      for (const p of _pathState.points.concat(_pathState.menuPoints)) {
+        const toPoint = V3.Sub(p.pos, eyePos);
+        const dist = V3.Length(toPoint);
+
+        if (dist <= 0.001 || dist > maxDistance) {
+          continue;
+        }
+
+        const dirToPoint = V3.Normalize(toPoint);
+        const dot = V3.Dot(facing, dirToPoint);
+
+        if (dot < minDot) {
+          continue;
+        }
+
+        if (
+          dot > bestDot ||
+          (Math.abs(dot - bestDot) < 0.0001 && dist < bestDist)
+        ) {
+          bestDot = dot;
+          bestDist = dist;
+          bestPoint = p;
+        }
+      }
+
+      return bestPoint;
     }
   }
 
@@ -2437,29 +2719,254 @@ export namespace PCT {
     dirPlayer: mod.Player,
   ): Promise<void> {
     const ps = Player.GetOrCreate(dirPlayer);
-    if (!ps) return;
+    if (!ps || !ps.directorState) return;
+
+    const WI = PCT_WIM.init();
+
+    const pointPositioningSoundIncreasing = mod.SpawnObject(
+      rtc.SFX_UI_Gamemode_Shared_CaptureObjectives_CapturingTick_IsFriendly_SimpleLoop2D,
+      Vector.Zero(),
+      Vector.Zero(),
+    ) as mod.SFX;
+    const pointPositioningSoundDecreasing = mod.SpawnObject(
+      rtc.SFX_UI_Gamemode_Shared_CaptureObjectives_CapturingTick_IsEnemy_SimpleLoop2D,
+      Vector.Zero(),
+      Vector.Zero(),
+    ) as mod.SFX;
+    let pointPositioningSoundPlaying = false;
+    let pointCreationDistanceIncreasing = false;
+
+    let uiRefreshElapsed = 0;
+    const uiRefreshInterval = 1;
 
     while (mod.IsPlayerValid(dirPlayer) && Player.GetIsDirector(dirPlayer)) {
       if (!Player.IsDeployed(dirPlayer)) {
-        ps.stateBool.isJumping = false;
+        ps.directorState.actionState.isJumping = false;
+        ps.directorState.actionState.isFiring = false;
+        ps.directorState.actionState.isAiming = false;
+        ps.directorState.actionState.isCrouching = false;
+        ps.directorState.actionState.isProne = false;
         await mod.Wait(1);
         continue;
       }
 
-      await mod.Wait(oneTick);
+      await mod.Wait(DT);
+      uiRefreshElapsed += DT;
 
       const isJumping = Player.IsJumping(dirPlayer);
+      const isFiring = Player.IsFiring(dirPlayer);
+      const isCrouching = Player.IsCrouching(dirPlayer);
+      const isAiming = Player.IsAiming(dirPlayer);
+      const isProne = Player.IsProne(dirPlayer);
 
-      if (isJumping && ps.stateBool.isJumping === false) {
-        ps.stateBool.isJumping = true;
-        PlayerTracking.InitNextTarget(dirPlayer);
+      if (
+        _cameraState.type === CameraType.Free //&&
+        //_cameraState.freeCamIsTracking
+      ) {
+        if (isJumping && ps.directorState.actionState.isJumping === false) {
+          ps.directorState.actionState.isJumping = true;
+          PlayerTracking.InitNextTarget(dirPlayer);
+        }
+
+        TargetSelectionUI.Refresh(dirPlayer);
+      } else if (_cameraState.type === CameraType.Path) {
+        // Icon Aim
+        const playerEyePos = Player.GetEyePosition(dirPlayer);
+        const playerFacing = Player.GetFacingDirection(dirPlayer);
+        const aimedPoint = Player.GetAimedPathPoint(dirPlayer);
+
+        if (
+          isAiming &&
+          ps.directorState.actionState.isAiming === false &&
+          _pathState.isMoving
+        ) {
+          ps.directorState.actionState.isAiming = true;
+          pointCreationDistanceIncreasing = !pointCreationDistanceIncreasing;
+        }
+
+        if (isAiming && _pathState.isMoving) {
+          const minDistance = 1;
+          const maxDistance = 100;
+          const step = pointCreationDistanceIncreasing ? 1 : -1;
+
+          if (!pointPositioningSoundPlaying) {
+            mod.PlaySound(
+              pointCreationDistanceIncreasing
+                ? pointPositioningSoundIncreasing
+                : pointPositioningSoundDecreasing,
+              1,
+              dirPlayer,
+            );
+            pointPositioningSoundPlaying = true;
+          }
+
+          _pathState.pointCreationDistance = Math.max(
+            minDistance,
+            Math.min(maxDistance, _pathState.pointCreationDistance + step),
+          );
+
+          if (
+            _pathState.pointCreationDistance === minDistance ||
+            _pathState.pointCreationDistance === maxDistance
+          ) {
+            if (pointPositioningSoundPlaying) {
+              mod.StopSound(pointPositioningSoundIncreasing);
+              mod.StopSound(pointPositioningSoundDecreasing);
+              pointPositioningSoundPlaying = false;
+            }
+          }
+
+          if (uiRefreshElapsed >= uiRefreshInterval) {
+            PathCameraSetupUI.RefreshPathControlMenu(dirPlayer);
+            uiRefreshElapsed = 0;
+          }
+        }
+
+        if (_pathState.inSelection && aimedPoint) {
+          for (const p of _pathState.menuPoints) {
+            if (aimedPoint && p.uniqueId === aimedPoint.uniqueId) {
+              WI.setColor(
+                p.worldIconName,
+                _config.pathPointConfig.menuHoverColor,
+              );
+            } else {
+              WI.setColor(
+                p.worldIconName,
+                _config.pathPointConfig.menuDefaultColor,
+              );
+            }
+          }
+        } else if (!_pathState.locked) {
+          for (const p of _pathState.points) {
+            if (aimedPoint && p.uniqueId === aimedPoint.uniqueId) {
+              WI.setColor(p.worldIconName, _config.pathPointConfig.hoverColor);
+              WI.setIcon(p.worldIconName, _config.pathPointConfig.hoverIcon);
+            } else {
+              WI.setColor(
+                p.worldIconName,
+                _config.pathPointConfig.defaultColor,
+              );
+              WI.setIcon(p.worldIconName, _config.pathPointConfig.defaultIcon);
+            }
+          }
+        }
+
+        //Icon Fire Action
+        if (
+          isFiring &&
+          ps.directorState.actionState.isFiring === false &&
+          (isCrouching || _pathState.isMoving) //&&
+          //PLAYERS[pid].state.isCrouching === false
+        ) {
+          ps.directorState.actionState.isFiring = true;
+          ps.directorState.actionState.isCrouching = true;
+
+          if (_pathState.isMoving) {
+            _pathState.isMoving = false;
+            continue;
+          }
+
+          if (aimedPoint) {
+            if (aimedPoint.selectionType === PointSelectionType.MenuDelete) {
+              _pathState.locked = true;
+              const pointToDelete = aimedPoint.parentId;
+              if (!pointToDelete) continue;
+              Path.RemovePoint(dirPlayer, pointToDelete);
+              _pathState.locked = false;
+            } else if (
+              aimedPoint.selectionType === PointSelectionType.MenuMove
+            ) {
+              _pathState.locked = true;
+              const pointToMoveId = aimedPoint.parentId;
+              if (!pointToMoveId) continue;
+              _pathState.isMoving = true;
+              Path.MovePoint(dirPlayer, { uniqueId: pointToMoveId });
+              _pathState.locked = false;
+            } else {
+              if (_pathState.inSelection) {
+                Path.ClearPointsSelection(dirPlayer);
+                continue;
+              }
+
+              if (_pathState.locked) continue;
+
+              Path.SelectPoint(aimedPoint);
+            }
+          } else {
+            if (_pathState.inSelection) {
+              Path.ClearPointsSelection(dirPlayer);
+              continue;
+            }
+
+            if (_pathState.locked) continue;
+
+            _pathState.locked = true;
+            _pathState.previousAimedPoint = null;
+
+            const forwardPoint = V3.Add(
+              playerEyePos,
+              V3.Scale(playerFacing, _pathState.pointCreationDistance),
+            );
+            const newIconName = Path.CreatePointIcon(forwardPoint);
+
+            const newPoint = Path.AddPoint(
+              dirPlayer,
+              forwardPoint,
+              newIconName,
+            );
+            _pathState.locked = false;
+
+            _pathState.isMoving = true;
+            void Path.MovePoint(dirPlayer, { object: newPoint });
+          }
+
+          SyncTrackedCamSettingsInfo();
+          PathCameraSetupUI.RefreshCameraControlMenu(dirPlayer);
+        }
+
+        if (
+          isProne &&
+          ps.directorState.actionState.isProne === false &&
+          isFiring &&
+          ps.directorState.actionState.isFiring === false
+        ) {
+          ps.directorState.actionState.isProne = true;
+          ps.directorState.actionState.isFiring = true;
+
+          if (!_cameraState.isRunning) {
+            const points = _pathState.points.map((p) => p.pos);
+            StartCamera(dirPlayer, points);
+
+            SpawnPathCameraInteractPoint(dirPlayer);
+          }
+        }
       }
 
-      if (!isJumping && ps.stateBool.isJumping === true) {
-        ps.stateBool.isJumping = false;
+      if (!isFiring && ps.directorState.actionState.isFiring === true) {
+        ps.directorState.actionState.isFiring = false;
       }
 
-      TargetSelectionUI.Refresh(dirPlayer);
+      if (!isAiming && ps.directorState.actionState.isAiming === true) {
+        ps.directorState.actionState.isAiming = false;
+        if (pointPositioningSoundPlaying) {
+          mod.StopSound(pointPositioningSoundIncreasing);
+          mod.StopSound(pointPositioningSoundDecreasing);
+          pointPositioningSoundPlaying = false;
+        }
+        PathCameraSetupUI.RefreshPathControlMenu(dirPlayer);
+      }
+
+      if (!isCrouching && ps.directorState.actionState.isCrouching === true) {
+        ps.directorState.actionState.isCrouching = false;
+      }
+
+      if (!isProne && ps.directorState.actionState.isProne === true) {
+        ps.directorState.actionState.isProne = false;
+      }
+
+      if (!isJumping && ps.directorState.actionState.isJumping === true) {
+        ps.directorState.actionState.isJumping = false;
+      }
     }
   }
 
@@ -2506,66 +3013,81 @@ export namespace PCT {
     }
 
     export function FindNextTarget(currentTarget: mod.Player | null): void {
-      let nextTarget: mod.Player | null = null;
+      FindTargetFrom(currentTarget, 1);
+    }
 
-      if (currentTarget === null) {
-        let firstOtherPlayer: mod.Player | null = null;
-        const allPlayers = mod.AllPlayers();
-        const allPlayersCount = mod.CountOf(allPlayers);
+    export function FindPreviousTarget(currentTarget: mod.Player | null): void {
+      FindTargetFrom(currentTarget, -1);
+    }
 
-        for (let i = 0; i < allPlayersCount; i++) {
-          const p = mod.ValueInArray(allPlayers, i) as mod.Player | null;
-          if (!p || !mod.IsPlayerValid(p) || !Player.IsDeployed(p)) continue;
-          //if (mod.Equals(p, DIRECTOR_PLAYER)) continue;
+    export function GetFirstDeployedNonDirectorPlayer(): mod.Player | null {
+      const allPlayers = mod.AllPlayers();
+      const allPlayersCount = mod.CountOf(allPlayers);
+      const director = Player.GetDirectorPlayerObject();
 
-          firstOtherPlayer = p;
-          break;
-        }
+      for (let i = 0; i < allPlayersCount; i++) {
+        const player = mod.ValueInArray(allPlayers, i) as mod.Player | null;
 
-        _cameraState.target.playerObject = firstOtherPlayer;
-        currentTarget = firstOtherPlayer;
-        SyncTargetPlayerInfo();
+        if (!player) continue;
+        if (!mod.IsPlayerValid(player)) continue;
+        if (director && mod.Equals(player, director)) continue;
+        if (!Player.IsDeployed(player)) continue;
+
+        return player;
       }
 
-      const currentPlayerIndex = GetTargetPlayerIndex(
-        currentTarget as mod.Player,
-      );
-      const allPlayersCount = mod.CountOf(mod.AllPlayers());
+      return null;
+    }
 
-      const nextValue = currentPlayerIndex + 1;
-      const finalNextValue =
-        ((nextValue % allPlayersCount) + allPlayersCount) % allPlayersCount;
+    function FindTargetFrom(
+      currentTarget: mod.Player | null,
+      direction: number,
+    ): void {
+      const allPlayers = mod.AllPlayers();
+      const allPlayersCount = mod.CountOf(allPlayers);
+      if (allPlayersCount <= 0) return;
 
-      for (let step = 0; step < allPlayersCount; step++) {
-        const index = (finalNextValue + step) % allPlayersCount;
-        const potentialTarget = mod.ValueInArray(
-          mod.AllPlayers(),
+      const stepDirection = direction >= 0 ? 1 : -1;
+
+      if (currentTarget === null || !mod.IsPlayerValid(currentTarget)) {
+        _cameraState.target.playerObject = GetFirstDeployedNonDirectorPlayer();
+        SyncTargetPlayerInfo();
+        return;
+      }
+
+      const currentIndex = GetTargetPlayerIndex(currentTarget);
+      const startIndex = currentIndex < 0 ? 0 : currentIndex;
+
+      for (let step = 1; step <= allPlayersCount; step++) {
+        const index =
+          (((startIndex + step * stepDirection) % allPlayersCount) +
+            allPlayersCount) %
+          allPlayersCount;
+
+        const possibleTarget = mod.ValueInArray(
+          allPlayers,
           index,
         ) as mod.Player | null;
-        if (
-          !potentialTarget ||
-          !mod.IsPlayerValid(potentialTarget) ||
-          !Player.IsDeployed(potentialTarget)
-        )
+
+        if (!possibleTarget) continue;
+        if (mod.Equals(Player.GetDirectorPlayerObject(), possibleTarget))
           continue;
-        if (mod.Equals(potentialTarget, currentTarget)) continue;
+        if (!mod.IsPlayerValid(possibleTarget)) continue;
+        if (!Player.IsDeployed(possibleTarget)) continue;
+        if (mod.Equals(possibleTarget, currentTarget)) continue;
 
-        nextTarget = potentialTarget;
-        break;
-      }
-
-      if (nextTarget) {
-        _cameraState.target.playerObject = nextTarget;
+        _cameraState.target.playerObject = possibleTarget;
         SyncTargetPlayerInfo();
+        return;
       }
     }
 
     export function SyncTargetPlayerInfo(): void {
       if (!CurrentTargetIsValid()) {
-        _trackedPathPointInfo.cameraTarget = null;
+        _trackedCamSettingsInfo.cameraTarget = null;
         return;
       }
-      _trackedPathPointInfo.cameraTarget = _cameraState.target.playerObject;
+      _trackedCamSettingsInfo.cameraTarget = _cameraState.target.playerObject;
     }
 
     export function GetTargetPlayerIndex(targetPlayer: mod.Player): number {
@@ -2587,9 +3109,14 @@ export namespace PCT {
       let count = 0;
       const allPlayers = mod.AllPlayers();
       const allPlayersCount = mod.CountOf(allPlayers);
+      const dirPlayer = Player.GetDirectorPlayerObject();
+
       for (let i = 0; i < allPlayersCount; i++) {
         const p = mod.ValueInArray(allPlayers, i) as mod.Player | null;
-        if (!p || !mod.IsPlayerValid(p) || !Player.IsDeployed(p)) continue;
+        if (!p || !mod.IsPlayerValid(p)) continue;
+        if (dirPlayer && mod.Equals(p, dirPlayer)) continue;
+        if (!Player.IsDeployed(p)) continue;
+
         count++;
       }
       return count;
@@ -2629,7 +3156,7 @@ export namespace PCT {
       return Player.GetFacingDirection(player);
     }
 
-    function GetPosition(
+    export function GetPosition(
       player: mod.Player,
       state: TrackedPlayerState,
     ): { effectivePos: V3 | null; isZeroVec: boolean } | null {
@@ -2776,6 +3303,271 @@ export namespace PCT {
     return NormalizeAngleRad(a + delta * t);
   }
 
+  function GetQuadraticBezierPoint(p0: V3, p1: V3, p2: V3, t: number): V3 {
+    const u = 1 - t;
+    const tt = t * t;
+    const uu = u * u;
+
+    return V3.Create(
+      uu * p0.x + 2 * u * t * p1.x + tt * p2.x,
+      uu * p0.y + 2 * u * t * p1.y + tt * p2.y,
+      uu * p0.z + 2 * u * t * p1.z + tt * p2.z,
+    );
+  }
+
+  /************************
+   * Path Helpers
+   *************************/
+
+  const Path = {
+    AddPoint(dirPlayer: mod.Player, pos: V3, worldIconName: string): PathPoint {
+      const uniqueId = Math.floor(Math.random() * 1000000);
+
+      _pathState.points.push({
+        uniqueId,
+        orderId: _pathState.points.length,
+        pos: pos,
+        playerPosY: Player.GetPosition(dirPlayer).y,
+        worldIconName,
+        selectionType: PointSelectionType.PathPoint,
+      });
+
+      Path.ResetPointsOrderIds();
+
+      console.log(
+        `New Pathpoint Added (total: ${_pathState.points.length}) at (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`,
+      );
+
+      PathCameraSetupUI.RefreshPathControlMenu(dirPlayer);
+
+      return _pathState.points[
+        _pathState.points.findIndex((p) => p.uniqueId === uniqueId)
+      ];
+    },
+
+    CreatePointIcon(newPointPos: V3): string {
+      for (let i = 0; i < _pathState.points.length; i++) {
+        const p = _pathState.points[i];
+        p.orderId = i + 1;
+        PCT_WIM.init().createIcon(p.worldIconName, V3.ToVector(p.pos), {
+          textVisible: true,
+          text: mod.Message("PCT_{}", p.orderId),
+          icon: _config.pathPointConfig.defaultIcon,
+          iconVisible: true,
+          color: _config.pathPointConfig.defaultColor,
+        });
+      }
+
+      const newIconName = `path_point_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+      const newIconOrderId = _pathState.points.length + 1;
+
+      PCT_WIM.init().createIcon(newIconName, V3.ToVector(newPointPos), {
+        textVisible: true,
+        text: mod.Message("PCT_{}", newIconOrderId),
+        icon: _config.pathPointConfig.hoverIcon,
+        iconVisible: true,
+        color: _config.pathPointConfig.hoverColor,
+      });
+
+      return newIconName;
+    },
+
+    ResetPointsOrderIds() {
+      for (let i = 0; i < _pathState.points.length; i++) {
+        const orderId = i + 1;
+        _pathState.points[i].orderId = orderId;
+        if (PCT_WIM.init().getIconExists(_pathState.points[i].worldIconName)) {
+          PCT_WIM.init().setText(
+            _pathState.points[i].worldIconName,
+            mod.Message("PCT_{}", orderId),
+          );
+        }
+      }
+    },
+
+    SelectPoint(pathPoint: PathPoint) {
+      _pathState.locked = true;
+      Path.SetPointsInSelection(true);
+
+      const currentDirectionPlayerObject = Player.GetDirectorPlayerObject();
+      if (currentDirectionPlayerObject) {
+        PathCameraSetupUI.RefreshPathControlMenu(currentDirectionPlayerObject);
+      }
+
+      const WI = PCT_WIM.init();
+
+      if (WI.getIconExists(pathPoint.worldIconName)) {
+        WI.setColor(
+          pathPoint.worldIconName,
+          _config.pathPointConfig.selectedColor,
+        );
+
+        const menuWorldIcons = [
+          {
+            name: pathPoint.worldIconName + "_deleteWI",
+            pos: {
+              x: pathPoint.pos.x,
+              y: pathPoint.pos.y - 1,
+              z: pathPoint.pos.z,
+            },
+            msg: mod.Message("PCT_DELETE_POINT"),
+            type: PointSelectionType.MenuDelete,
+          },
+          {
+            name: pathPoint.worldIconName + "_moveWI",
+            pos: {
+              x: pathPoint.pos.x,
+              y: pathPoint.pos.y + 0.5,
+              z: pathPoint.pos.z,
+            },
+            msg: mod.Message("PCT_MOVE_POINT"),
+            type: PointSelectionType.MenuMove,
+          },
+        ];
+
+        for (const menuIcon of menuWorldIcons) {
+          WI.createIcon(menuIcon.name, V3.ToVector(menuIcon.pos), {
+            iconVisible: false,
+            textVisible: true,
+            text: menuIcon.msg,
+            color: _config.pathPointConfig.defaultColor,
+          });
+
+          _pathState.menuPoints.push({
+            uniqueId: pathPoint.uniqueId + Math.floor(Math.random() * 1000000),
+            orderId: 0,
+            pos: menuIcon.pos,
+            playerPosY: pathPoint.playerPosY,
+            worldIconName: menuIcon.name,
+            selectionType: menuIcon.type,
+            parentId: pathPoint.uniqueId,
+          });
+        }
+      }
+
+      _pathState.previousAimedPoint = pathPoint;
+    },
+
+    RemovePoint(dirPlayer: mod.Player, uniqueId: number) {
+      Path.ClearPointsSelection(dirPlayer);
+
+      const index = _pathState.points.findIndex((p) => p.uniqueId === uniqueId);
+
+      PCT_WIM.init().deleteIcon(_pathState.points[index].worldIconName);
+
+      if (index !== -1) {
+        _pathState.points.splice(index, 1);
+        Path.ResetPointsOrderIds();
+      }
+
+      _pathState.previousAimedPoint = null;
+
+      PathCameraSetupUI.RefreshPathControlMenu(dirPlayer);
+    },
+
+    SetPointsInSelection(enabled: boolean) {
+      if (!enabled) {
+        _pathState.menuPoints.forEach((menuPoint) => {
+          if (PCT_WIM.init().getIconExists(menuPoint.worldIconName)) {
+            PCT_WIM.init().deleteIcon(menuPoint.worldIconName);
+          }
+        });
+        _pathState.menuPoints.length = 0;
+      }
+
+      _pathState.inSelection = enabled;
+
+      const currentDirectionPlayerObject = Player.GetDirectorPlayerObject();
+      if (currentDirectionPlayerObject) {
+        PathCameraSetupUI.RefreshPathControlMenu(currentDirectionPlayerObject);
+      }
+    },
+
+    ClearPointsSelection(dirPlayer: mod.Player) {
+      _pathState.previousAimedPoint = null;
+      Path.SetPointsInSelection(false);
+
+      SyncTrackedCamSettingsInfo();
+      PathCameraSetupUI.RefreshCameraControlMenu(dirPlayer);
+
+      _pathState.locked = false;
+
+      PathCameraSetupUI.RefreshPathControlMenu(dirPlayer);
+    },
+
+    async MovePoint(
+      dirPlayer: mod.Player,
+      pathPoint: { object?: PathPoint; uniqueId?: number },
+    ) {
+      Path.ClearPointsSelection(dirPlayer);
+
+      const point =
+        pathPoint.object ??
+        _pathState.points.find((p) => p.uniqueId === pathPoint.uniqueId);
+      if (!point) {
+        _pathState.isMoving = false;
+        PathCameraSetupUI.RefreshPathControlMenu(dirPlayer);
+        return;
+      }
+
+      const initialFxPos = V3.Create(
+        point.pos.x,
+        Player.GetPosition(dirPlayer).y,
+        point.pos.z,
+      );
+
+      const pointFx = await VFX.Spawn(
+        rtc.FX_Gadget_DeployableMortar_Target_Area,
+        V3.ToVector(initialFxPos),
+        true,
+        { isContinuous: true },
+      );
+
+      PathCameraSetupUI.RefreshPathControlMenu(dirPlayer);
+      PathCameraSetupUI.InitMovePointTipWindow(dirPlayer);
+
+      while (mod.IsPlayerValid(dirPlayer) && _pathState.isMoving === true) {
+        await mod.Wait(DT);
+
+        const eyePos = Player.GetEyePosition(dirPlayer);
+        const dirPlayerPos = Player.GetPosition(dirPlayer);
+        const facing = V3.Normalize(Player.GetFacingDirection(dirPlayer));
+        const newPos = V3.Add(
+          eyePos,
+          V3.Scale(facing, _pathState.pointCreationDistance),
+        );
+
+        point.pos = newPos;
+        PCT_WIM.init().setPosition(point.worldIconName, V3.ToVector(newPos));
+
+        mod.MoveVFX(
+          pointFx,
+          V3.ToVector(V3.Create(newPos.x, dirPlayerPos.y, newPos.z)),
+          Vector.Zero(),
+        );
+      }
+
+      mod.UnspawnObject(pointFx);
+      PathCameraSetupUI.HideMovePointTipWindow(dirPlayer);
+
+      _pathState.isMoving = false;
+      _pathState.locked = false;
+      PathCameraSetupUI.RefreshPathControlMenu(dirPlayer);
+    },
+
+    CalculateLength(pathPoints: PathPoint[]): number {
+      let length = 0;
+      for (let i = 1; i < pathPoints.length; i++) {
+        length += V3.DistanceBetween(
+          pathPoints[i - 1].pos,
+          pathPoints[i].pos,
+        ).whole;
+      }
+
+      return length;
+    },
+  };
+
   /************************
    * Camera Helpers
    *************************/
@@ -2795,96 +3587,199 @@ export namespace PCT {
     );
   }
 
+  function GetPointTowards(from: V3, to: V3, distance: number): V3 {
+    const dir = V3.Normalize(V3.Sub(to, from));
+    return V3.Add(from, V3.Scale(dir, distance));
+  }
+
+  /*function GetSegmentDuration(a: V3, b: V3): number {
+    const dist = V3.DistanceBetween(a, b, DistanceType.XZ, 2).full;
+
+    return Math.max(dist / _cameraState.speed, 0.05);
+  }*/
+
+  function BuildSmoothedCameraPath(route: V3[]): V3[] {
+    if (route.length <= 2) return route;
+
+    const smoothPath: V3[] = [];
+
+    smoothPath.push(route[0]);
+
+    for (let i = 1; i < route.length - 1; i++) {
+      const prev = route[i - 1];
+      const curr = route[i];
+      const next = route[i + 1];
+
+      const distPrev = V3.DistanceBetween(prev, curr).full;
+      const distNext = V3.DistanceBetween(curr, next).full;
+
+      const trimIn = Math.min(_pathState.cornerRadius, distPrev * 0.35);
+      const trimOut = Math.min(_pathState.cornerRadius, distNext * 0.35);
+
+      const curveStart = GetPointTowards(curr, prev, trimIn);
+      const curveEnd = GetPointTowards(curr, next, trimOut);
+
+      const last = smoothPath[smoothPath.length - 1];
+      if (V3.DistanceBetween(last, curveStart).full > 0.05) {
+        smoothPath.push(curveStart);
+      }
+
+      for (let s = 1; s <= _config.pathConfig.samplesPerCorner; s++) {
+        const t = s / (_config.pathConfig.samplesPerCorner + 1);
+        smoothPath.push(GetQuadraticBezierPoint(curveStart, curr, curveEnd, t));
+      }
+
+      smoothPath.push(curveEnd);
+    }
+
+    return smoothPath;
+  }
+
+  function SpawnPathCameraInteractPoint(dirPlayer: mod.Player): void {
+    const ps = Player.GetOrCreate(dirPlayer);
+    if (!ps || !ps.directorState) return;
+
+    if (ps.directorState.pathCameraInteractPoint) {
+      UnspawnPathCameraInteractPoint(dirPlayer);
+    }
+
+    ps.directorState.pathCameraInteractPoint = mod.SpawnObject(
+      rtc.InteractPoint,
+      V3.ToVector(Player.GetEyePosition(dirPlayer)),
+      Vector.Zero(),
+    ) as mod.InteractPoint;
+  }
+
+  function UnspawnPathCameraInteractPoint(dirPlayer: mod.Player): void {
+    const ps = Player.GetOrCreate(dirPlayer);
+    if (!ps || !ps.directorState) return;
+
+    if (ps.directorState.pathCameraInteractPoint) {
+      mod.UnspawnObject(ps.directorState.pathCameraInteractPoint);
+      ps.directorState.pathCameraInteractPoint = null;
+    }
+  }
+
   /************************
    * Camera Initialization
    *************************/
 
-  async function StartCamera(player: mod.Player, points: V3[]): Promise<void> {
-    const ps = Player.GetOrCreate(player);
+  async function StartCamera(
+    dirPlayer: mod.Player,
+    points: V3[],
+  ): Promise<void> {
+    const ps = Player.GetOrCreate(dirPlayer);
     if (ps === null) return;
 
-    if (_cameraState.type === CameraType.Point) {
+    if (_cameraState.type === CameraType.Path) {
       if (points.length === 0) return;
 
       if (points.length === 1) {
-        //await PCT_MoveCamera_Stationary(player, points); WORK IN PROGRESS
+        //await PCT_MoveCamera_Stationary(dirPlayer, points); WORK IN PROGRESS
       } else if (points.length >= 2) {
-        //await PCT_MoveCamera_Path(player, points); WORK IN PROGRESS
+        PathCameraSetupUI.ShowCameraControlMenu(dirPlayer);
+        PathCameraSetupUI.HidePathControlMenu(dirPlayer);
+
+        await StartPathCamera(dirPlayer, points);
       }
     } else if (_cameraState.type === CameraType.Free) {
-      mod.EnableInputRestriction(player, mod.RestrictedInputs.Prone, true);
+      mod.EnableInputRestriction(dirPlayer, mod.RestrictedInputs.Prone, true);
       //mod.EnableInputRestriction(dp, mod.RestrictedInputs.CameraPitch, true);
-      mod.EnableInputRestriction(player, mod.RestrictedInputs.CycleFire, true);
       mod.EnableInputRestriction(
-        player,
+        dirPlayer,
+        mod.RestrictedInputs.CycleFire,
+        true,
+      );
+      mod.EnableInputRestriction(
+        dirPlayer,
         mod.RestrictedInputs.CyclePrimary,
         true,
       );
-      mod.EnableInputRestriction(player, mod.RestrictedInputs.Reload, true);
+      mod.EnableInputRestriction(dirPlayer, mod.RestrictedInputs.Reload, true);
       mod.EnableInputRestriction(
-        player,
+        dirPlayer,
         mod.RestrictedInputs.SelectMelee,
         true,
       );
       mod.EnableInputRestriction(
-        player,
+        dirPlayer,
         mod.RestrictedInputs.SelectThrowable,
         true,
       );
       mod.EnableInputRestriction(
-        player,
+        dirPlayer,
         mod.RestrictedInputs.SelectSecondary,
         true,
       );
       mod.EnableInputRestriction(
-        player,
+        dirPlayer,
         mod.RestrictedInputs.SelectPrimary,
         true,
       );
       mod.EnableInputRestriction(
-        player,
+        dirPlayer,
         mod.RestrictedInputs.SelectOpenGadget,
         true,
       );
-      mod.EnableInputRestriction(player, mod.RestrictedInputs.FireWeapon, true);
       mod.EnableInputRestriction(
-        player,
+        dirPlayer,
+        mod.RestrictedInputs.FireWeapon,
+        true,
+      );
+      mod.EnableInputRestriction(
+        dirPlayer,
         mod.RestrictedInputs.SelectCharacterGadget,
         true,
       );
 
-      await mod.Wait(threeTicks);
+      await mod.Wait(SD);
 
-      _freeCamInteractPoint = mod.SpawnObject(
-        rtc.InteractPoint,
-        V3.ToVector(_directorControlRoomSpawnPos),
-        Vector.Zero(),
-      ) as mod.InteractPoint;
+      SpawnFreeCamInteractPoint();
 
-      mod.Teleport(player, V3.ToVector(_directorControlRoomSpawnPos), 0);
+      mod.EnableInputRestriction(dirPlayer, mod.RestrictedInputs.Prone, false);
 
-      mod.EnableInputRestriction(player, mod.RestrictedInputs.Prone, false);
-
-      {
-        //DEBUG ONLY - TODO: REMOVE
-        const schema = _trackedPathPointInfoUIRows.find(
-          (row) => row.id === "cameraTargetType",
-        );
-        if (!schema) return;
-
-        //PCT_AdjustTrackedPathPointValue(schema.id, -schema.step);
-        //PCT_RefreshPlayerUI(player);
+      while (!Player.IsDeployed(dirPlayer)) {
+        await mod.Wait(1);
       }
 
-      await StartFreeCamera(player);
+      mod.Teleport(dirPlayer, V3.ToVector(_directorControlRoomSpawnPos), 0);
+      WaterCheck();
+
+      async function WaterCheck() {
+        await mod.Wait(1);
+
+        if (Player.IsInWater(dirPlayer)) {
+          await UnspawnDirectorControlRoom();
+          await SpawnDirectorControlRoom(true);
+          mod.Teleport(dirPlayer, V3.ToVector(_directorControlRoomSpawnPos), 0);
+          SpawnFreeCamInteractPoint();
+        }
+      }
+
+      await StartFreeCamera(dirPlayer);
     }
+  }
+
+  function SpawnFreeCamInteractPoint(): void {
+    if (_freeCamInteractPoint) {
+      mod.UnspawnObject(_freeCamInteractPoint);
+    }
+
+    _freeCamInteractPoint = mod.SpawnObject(
+      rtc.InteractPoint,
+      V3.ToVector(_directorControlRoomSpawnPos),
+      Vector.Zero(),
+    ) as mod.InteractPoint;
   }
 
   /************************
    * Camera Type: Free
    *************************/
 
-  async function StartFreeCamera(dirPlayer: mod.Player): Promise<void> {
+  async function StartFreeCamera(
+    dirPlayer: mod.Player,
+    zoomOutBetweenTargets: boolean = true,
+  ): Promise<void> {
     const ps = Player.GetOrCreate(dirPlayer);
     if (ps === null) return;
 
@@ -2904,11 +3799,11 @@ export namespace PCT {
     const playerPos = Player.GetPosition(dirPlayer);
     const playerFacing = Player.GetFacingDirection(dirPlayer);
     const camStartPos = V3.Add(playerPos, V3.Scale(playerFacing, -10));
-    camStartPos.y += 40;
+    camStartPos.y += 60;
 
     const camParamsRefreshTicks = 10;
 
-    const trackedPlayerPitchOffsetRad = DegToRad(15);
+    const trackedPlayerPitchOffsetRad = DegToRad(16);
     const trackedRotationSmoothingYaw = 0.12;
     const trackedRotationSmoothingPitch = 0.12;
     const trackedPlayerYSmoothing = 0.08;
@@ -2929,6 +3824,17 @@ export namespace PCT {
     const freeMoveForwardSmoothing = 0.12;
     const freeMoveStrafeSmoothing = 0.12;
 
+    // Applies if ZoomOutBetweenTargets is enabled *START*
+    const targetSwitchDistanceThreshold = 100;
+    const targetSwitchZoomOutHeight = 100;
+
+    const targetSwitchZoomOutPositionSmoothing = 0.08;
+    const targetSwitchZoomInPositionSmoothing = 0.1;
+    const targetSwitchRotationSmoothing = 0.16;
+
+    const targetSwitchArriveDistance = 0.8;
+    // If zoomOutBetweenTargets is enabled *END*
+
     const minPitch = -DegToRad(89);
     const maxPitch = DegToRad(89);
 
@@ -2947,6 +3853,111 @@ export namespace PCT {
 
     let focusTransitionTargetPos: V3 | null = null;
     let focusTransitionTargetRot: V3 | null = null;
+
+    // If zoomOutBetweenTargets is enabled *START*
+    enum TargetSwitchPhase {
+      None,
+      ZoomOut,
+      ZoomIn,
+    }
+
+    let targetSwitchYaw: number | null = null;
+    let targetSwitchPitch: number | null = null;
+
+    let targetSwitchPhase = TargetSwitchPhase.None;
+    let targetSwitchZoomOutPos: V3 | null = null;
+    let targetSwitchTargetPlayer: mod.Player | null = null;
+
+    let lastTrackedTargetPlayer: mod.Player | null =
+      PlayerTracking.CurrentTargetIsValid()
+        ? (_cameraState.target.playerObject as mod.Player)
+        : null;
+
+    function TargetSwitchIsActive(): boolean {
+      return targetSwitchPhase !== TargetSwitchPhase.None;
+    }
+
+    function ClearTargetSwitchTransition(): void {
+      targetSwitchPhase = TargetSwitchPhase.None;
+      targetSwitchZoomOutPos = null;
+      targetSwitchTargetPlayer = null;
+      targetSwitchYaw = null;
+      targetSwitchPitch = null;
+    }
+
+    function GetCurrentFollowTarget(
+      trackedPlayerPos: V3,
+      trackedPlayer: mod.Player,
+    ): { pos: V3; rot: V3 } {
+      const useCloseFollow =
+        _cameraState.freeCamIsFocusing || _cameraState.freeCamIsInFocus;
+
+      return PlayerTracking.GetFollowTarget(
+        trackedPlayerPos,
+        trackedPlayer,
+        useCloseFollow ? focusPullbackDistance : 15,
+        useCloseFollow ? focusHeightOffset : 12,
+        trackedPlayerPitchOffsetRad,
+        cachedMinPitch,
+        cachedMaxPitch,
+      );
+    }
+
+    function TryStartTargetSwitchTransition(
+      previousTarget: mod.Player | null,
+      nextTarget: mod.Player,
+      nextTargetPos: V3,
+      currentCamPos: V3,
+    ): void {
+      if (!zoomOutBetweenTargets) return;
+      if (previousTarget === null) return;
+      if (!mod.IsPlayerValid(previousTarget)) return;
+      if (!mod.IsPlayerValid(nextTarget)) return;
+      if (mod.Equals(previousTarget, nextTarget)) return;
+
+      const previousTargetPos = Player.GetPosition(previousTarget);
+      const nextTargetFeetPos = Player.GetPosition(nextTarget);
+
+      const distanceBetweenTargets = V3.DistanceBetween(
+        previousTargetPos,
+        nextTargetFeetPos,
+        DistanceType.XZ,
+      ).full;
+
+      if (distanceBetweenTargets <= targetSwitchDistanceThreshold) {
+        return;
+      }
+
+      targetSwitchPhase = TargetSwitchPhase.ZoomOut;
+      targetSwitchTargetPlayer = nextTarget;
+
+      const initialYaw = YawTowards(currentCamPos, nextTargetPos);
+
+      const initialPitch = Clamp(
+        PitchTowards(currentCamPos, nextTargetPos),
+        cachedMinPitch,
+        cachedMaxPitch,
+      );
+
+      targetSwitchYaw = initialYaw;
+      targetSwitchPitch = initialPitch;
+
+      targetSwitchZoomOutPos = V3.Create(
+        currentCamPos.x,
+        currentCamPos.y + targetSwitchZoomOutHeight,
+        currentCamPos.z,
+      );
+
+      focusTransitionTargetPos = null;
+      focusTransitionTargetRot = null;
+
+      focusedInputSideOffsetCurrent = 0;
+      focusedInputForwardOffsetCurrent = 0;
+
+      smoothedTrackedYaw = null;
+      smoothedTrackedPitch = null;
+    }
+    // If zoomOutBetweenTargets is enabled *END*
 
     let focusedInputSideOffsetCurrent = 0;
     let focusedInputForwardOffsetCurrent = 0;
@@ -2981,16 +3992,38 @@ export namespace PCT {
 
     SetCameraTransform(cam, camStartPos, camStartPitch, camStartYaw);
 
-    mod.SetSpawnMode(mod.SpawnModes.Spectating);
     mod.SetCameraTypeForPlayer(dirPlayer, mod.Cameras.Fixed, _fixedCameraId);
 
-    await mod.Wait(threeTicks);
+    await mod.Wait(SD);
 
     _cameraState.isRunning = true;
-    //PCT_SpawnVFXAroundCamera(cam);
+
+    // mod.AddUIIcon appears to be bugged
+    /*if (_showPlayerNametags) {
+      const allPlayers = mod.AllPlayers()
+      const allPlayersCount = mod.CountOf(allPlayers);
+
+      for (let i = 0; i < allPlayersCount; i++) {
+        const p = mod.ValueInArray(allPlayers, i) as mod.Player;
+        if (!p || !mod.IsPlayerValid(p) || !Player.IsDeployed(p)) continue;
+        mod.AddUIIcon(
+          p,
+          mod.WorldIconImages.Triangle,
+          1,
+          mod.GetObjId(mod.GetTeam(p)) === 1 ?
+          PCT_UI.COLORS.BLUE :
+          PCT_UI.COLORS.RED,
+          mod.Message("PCT_{}", p),
+          dirPlayer
+        )
+      }
+
+      await mod.Wait(5);
+      mod.UndeployPlayer(dirPlayer);
+    }*/
 
     while (_cameraState.isRunning === true && _cameraState.reset === false) {
-      await mod.Wait(oneTick);
+      await mod.Wait(DT);
 
       if (!Player.GetOrCreate(dirPlayer)) {
         _cameraState.isRunning = false; //Todo: Actually remove director/reset state in GetValidDirectorState instead of just stopping the camera, and handle that case properly here instead of just breaking out of the loop
@@ -3023,34 +4056,54 @@ export namespace PCT {
         ) {
           const trackedPlayer = _cameraState.target.playerObject as mod.Player;
 
-          if (_cameraState.freeCamIsFocusing) {
-            const focusTarget = PlayerTracking.GetFollowTarget(
-              effectiveTrackedPlayerPosForLoop,
+          if (
+            lastTrackedTargetPlayer !== null &&
+            !mod.Equals(trackedPlayer, lastTrackedTargetPlayer)
+          ) {
+            TryStartTargetSwitchTransition(
+              lastTrackedTargetPlayer,
               trackedPlayer,
-              focusPullbackDistance,
-              focusHeightOffset,
-              trackedPlayerPitchOffsetRad,
-              cachedMinPitch,
-              cachedMaxPitch,
+              effectiveTrackedPlayerPosForLoop,
+              camPos,
             );
 
-            focusTransitionTargetPos = focusTarget.pos;
-            focusTransitionTargetRot = focusTarget.rot;
+            lastTrackedTargetPlayer = trackedPlayer;
           }
 
-          if (_cameraState.freeCamIsDefocusing) {
-            const defocusTarget = PlayerTracking.GetFollowTarget(
-              effectiveTrackedPlayerPosForLoop,
-              trackedPlayer,
-              15,
-              12,
-              trackedPlayerPitchOffsetRad,
-              cachedMinPitch,
-              cachedMaxPitch,
-            );
+          if (lastTrackedTargetPlayer === null) {
+            lastTrackedTargetPlayer = trackedPlayer;
+          }
 
-            focusTransitionTargetPos = defocusTarget.pos;
-            focusTransitionTargetRot = defocusTarget.rot;
+          if (!TargetSwitchIsActive()) {
+            if (_cameraState.freeCamIsFocusing) {
+              const focusTarget = PlayerTracking.GetFollowTarget(
+                effectiveTrackedPlayerPosForLoop,
+                trackedPlayer,
+                focusPullbackDistance,
+                focusHeightOffset,
+                trackedPlayerPitchOffsetRad,
+                cachedMinPitch,
+                cachedMaxPitch,
+              );
+
+              focusTransitionTargetPos = focusTarget.pos;
+              focusTransitionTargetRot = focusTarget.rot;
+            }
+
+            if (_cameraState.freeCamIsDefocusing) {
+              const defocusTarget = PlayerTracking.GetFollowTarget(
+                effectiveTrackedPlayerPosForLoop,
+                trackedPlayer,
+                15,
+                12,
+                trackedPlayerPitchOffsetRad,
+                cachedMinPitch,
+                cachedMaxPitch,
+              );
+
+              focusTransitionTargetPos = defocusTarget.pos;
+              focusTransitionTargetRot = defocusTarget.rot;
+            }
           }
         }
       }
@@ -3068,7 +4121,7 @@ export namespace PCT {
       const minMoveSpeed = 0.05;
       const hasMoveInput = horizontalSpeedSq > minMoveSpeed * minMoveSpeed;
 
-      if (hasMoveInput) {
+      if (hasMoveInput && !TargetSwitchIsActive()) {
         if (
           _cameraState.freeCamIsTracking &&
           PlayerTracking.CurrentTargetIsValid()
@@ -3089,7 +4142,7 @@ export namespace PCT {
 
       let inputDirection = V3.Zero();
 
-      if (hasMoveInput) {
+      if (hasMoveInput && !TargetSwitchIsActive()) {
         const moveInput = V3.Normalize(horizontalVelocity);
 
         const horizontalFacing = V3.Normalize(
@@ -3141,12 +4194,12 @@ export namespace PCT {
       }
 
       const freeCamSpeed = Player.IsSprinting(dirPlayer)
-        ? _config.cameraConfig.moveSpeed * 2
-        : _config.cameraConfig.moveSpeed;
+        ? _cameraState.speed * 3
+        : _cameraState.speed;
 
       const nextCamPos = V3.Add(
         camPos,
-        V3.Scale(inputDirection, freeCamSpeed * oneTick),
+        V3.Scale(inputDirection, freeCamSpeed * DT),
       );
 
       let nextYaw = YawTowards(
@@ -3239,6 +4292,7 @@ export namespace PCT {
       let finalCamRot = V3.Create(nextPitch, nextYaw, 0);
 
       if (
+        !TargetSwitchIsActive() &&
         _cameraState.freeCamIsTracking &&
         _cameraState.freeCamIsInFocus &&
         effectiveTrackedPlayerPosForLoop &&
@@ -3345,54 +4399,44 @@ export namespace PCT {
           ),
         );
 
+        let focusArrivalTargetYaw = focusTransitionTargetRot.y;
+        let focusArrivalTargetPitch = focusTransitionTargetRot.x;
+
         if (effectiveTrackedPlayerPosForLoop) {
-          const transitionTargetYaw = YawTowards(
+          focusArrivalTargetYaw = YawTowards(
             finalCamPos,
             effectiveTrackedPlayerPosForLoop,
           );
 
-          const transitionTargetPitch = Clamp(
+          focusArrivalTargetPitch = Clamp(
             PitchTowards(finalCamPos, effectiveTrackedPlayerPosForLoop) -
               trackedPlayerPitchOffsetRad,
             cachedMinPitch,
             cachedMaxPitch,
           );
-
-          finalCamRot = V3.Create(
-            LerpAngleRad(
-              nextPitch,
-              transitionTargetPitch,
-              focusRotationSmoothing,
-            ),
-            LerpAngleRad(nextYaw, transitionTargetYaw, focusRotationSmoothing),
-            0,
-          );
-        } else {
-          finalCamRot = V3.Create(
-            LerpAngleRad(
-              nextPitch,
-              focusTransitionTargetRot.x,
-              focusRotationSmoothing,
-            ),
-            LerpAngleRad(
-              nextYaw,
-              focusTransitionTargetRot.y,
-              focusRotationSmoothing,
-            ),
-            0,
-          );
         }
+
+        finalCamRot = V3.Create(
+          LerpAngleRad(
+            nextPitch,
+            focusArrivalTargetPitch,
+            focusRotationSmoothing,
+          ),
+          LerpAngleRad(nextYaw, focusArrivalTargetYaw, focusRotationSmoothing),
+          0,
+        );
 
         const arrivedDistance = V3.DistanceBetween(
           finalCamPos,
           focusTransitionTargetPos,
-          DistanceType.XZ,
         ).full;
+
         const arrivedYaw = Math.abs(
-          NormalizeAngleRad(finalCamRot.y - focusTransitionTargetRot.y),
+          NormalizeAngleRad(finalCamRot.y - focusArrivalTargetYaw),
         );
+
         const arrivedPitch = Math.abs(
-          NormalizeAngleRad(finalCamRot.x - focusTransitionTargetRot.x),
+          NormalizeAngleRad(finalCamRot.x - focusArrivalTargetPitch),
         );
 
         if (
@@ -3401,7 +4445,11 @@ export namespace PCT {
           arrivedPitch <= focusArriveAngle
         ) {
           finalCamPos = focusTransitionTargetPos;
-          finalCamRot = focusTransitionTargetRot;
+          finalCamRot = V3.Create(
+            focusArrivalTargetPitch,
+            focusArrivalTargetYaw,
+            0,
+          );
 
           if (_cameraState.freeCamIsFocusing) {
             _cameraState.freeCamIsFocusing = false;
@@ -3418,6 +4466,109 @@ export namespace PCT {
         }
       }
 
+      if (
+        TargetSwitchIsActive() &&
+        targetSwitchTargetPlayer !== null &&
+        targetSwitchZoomOutPos !== null &&
+        effectiveTrackedPlayerPosForLoop !== null &&
+        PlayerTracking.CurrentTargetIsValid()
+      ) {
+        if (!mod.IsPlayerValid(targetSwitchTargetPlayer)) {
+          ClearTargetSwitchTransition();
+        } else {
+          const currentTargetSwitchPhase =
+            targetSwitchPhase as TargetSwitchPhase;
+
+          const updatedFollowTarget = GetCurrentFollowTarget(
+            effectiveTrackedPlayerPosForLoop,
+            targetSwitchTargetPlayer,
+          );
+
+          const phaseTargetPos =
+            currentTargetSwitchPhase === TargetSwitchPhase.ZoomOut
+              ? targetSwitchZoomOutPos
+              : updatedFollowTarget.pos;
+
+          const phasePositionSmoothing =
+            currentTargetSwitchPhase === TargetSwitchPhase.ZoomOut
+              ? targetSwitchZoomOutPositionSmoothing
+              : targetSwitchZoomInPositionSmoothing;
+
+          finalCamPos = V3.Create(
+            V3.Lerp(camPos.x, phaseTargetPos.x, phasePositionSmoothing),
+            V3.Lerp(camPos.y, phaseTargetPos.y, phasePositionSmoothing),
+            V3.Lerp(camPos.z, phaseTargetPos.z, phasePositionSmoothing),
+          );
+
+          const targetYaw = YawTowards(
+            finalCamPos,
+            effectiveTrackedPlayerPosForLoop,
+          );
+
+          const targetPitch = Clamp(
+            PitchTowards(finalCamPos, effectiveTrackedPlayerPosForLoop),
+            cachedMinPitch,
+            cachedMaxPitch,
+          );
+
+          if (targetSwitchYaw === null) {
+            targetSwitchYaw = targetYaw;
+          } else {
+            targetSwitchYaw = LerpAngleRad(
+              targetSwitchYaw,
+              targetYaw,
+              targetSwitchRotationSmoothing,
+            );
+          }
+
+          if (targetSwitchPitch === null) {
+            targetSwitchPitch = targetPitch;
+          } else {
+            targetSwitchPitch = LerpAngleRad(
+              targetSwitchPitch,
+              targetPitch,
+              targetSwitchRotationSmoothing,
+            );
+          }
+
+          finalCamRot = V3.Create(targetSwitchPitch, targetSwitchYaw, 0);
+
+          const arrivedDistance = V3.DistanceBetween(
+            finalCamPos,
+            phaseTargetPos,
+            DistanceType.XYZ,
+          ).full;
+
+          const targetSwitchReachedPosition =
+            arrivedDistance <= targetSwitchArriveDistance;
+
+          if (
+            currentTargetSwitchPhase === TargetSwitchPhase.ZoomOut &&
+            targetSwitchReachedPosition
+          ) {
+            targetSwitchPhase = TargetSwitchPhase.ZoomIn;
+          } else if (
+            currentTargetSwitchPhase === TargetSwitchPhase.ZoomIn &&
+            targetSwitchReachedPosition
+          ) {
+            finalCamPos = updatedFollowTarget.pos;
+            finalCamRot = V3.Create(targetPitch, targetYaw, 0);
+
+            if (_cameraState.freeCamIsFocusing) {
+              _cameraState.freeCamIsFocusing = false;
+              _cameraState.freeCamIsInFocus = true;
+            }
+
+            _cameraState.freeCamIsDefocusing = false;
+
+            smoothedTrackedYaw = targetYaw;
+            smoothedTrackedPitch = targetPitch;
+
+            ClearTargetSwitchTransition();
+          }
+        }
+      }
+
       SetCameraTransform(
         _cameraObject,
         finalCamPos,
@@ -3425,6 +4576,510 @@ export namespace PCT {
         finalCamRot.y,
       );
     }
+
+    mod.SetCameraTypeForPlayer(dirPlayer, mod.Cameras.FirstPerson);
+
+    TargetSelectionUI.Destroy(mod.GetObjId(dirPlayer));
+
+    Player.SetDirectorCurrentStatus(dirPlayer, DirectorStateType.Idle);
+  }
+
+  async function StartPathCamera(
+    dirPlayer: mod.Player,
+    points: V3[],
+  ): Promise<void> {
+    const path = BuildSmoothedCameraPath(points);
+    if (path.length <= 1) return;
+
+    const originalLast = points[points.length - 1];
+    const pathLast = path[path.length - 1];
+
+    if (
+      V3.DistanceBetween(pathLast, originalLast, DistanceType.XYZ).full > 0.01
+    ) {
+      path.push(originalLast);
+    }
+
+    const cam = _cameraObject;
+
+    const rotationSmoothing = 0.15;
+    const camParamsRefreshTicks = 10;
+
+    const minPitch = -DegToRad(_cameraState.maxPitchUpDeg);
+    const maxPitch = DegToRad(_cameraState.maxPitchDownDeg);
+
+    const segmentLengths: number[] = [];
+    const cumulativeDistances: number[] = [0];
+
+    let totalLength = 0;
+
+    for (let i = 1; i < path.length; i++) {
+      const len = V3.DistanceBetween(
+        path[i - 1],
+        path[i],
+        DistanceType.XYZ,
+      ).full;
+      segmentLengths.push(len);
+      totalLength += len;
+      cumulativeDistances.push(totalLength);
+    }
+
+    if (totalLength <= 0) return;
+
+    const first = path[0];
+    const firstLook = path[Math.min(1, path.length - 1)];
+
+    const firstYaw = YawTowards(first, firstLook);
+
+    const firstPitch = Clamp(
+      PitchTowards(first, firstLook),
+      minPitch,
+      maxPitch,
+    );
+
+    SetCameraTransform(cam, first, firstPitch, firstYaw);
+
+    mod.SetCameraTypeForPlayer(dirPlayer, mod.Cameras.Fixed, _fixedCameraId);
+    mod.EnableAllInputRestrictions(dirPlayer, true);
+    mod.EnableInputRestriction(dirPlayer, mod.RestrictedInputs.Interact, false);
+
+    await mod.Wait(SD);
+
+    const trackedState: TrackedPlayerState = {
+      previousTrackedPlayerPos: null,
+      previousTrackedPlayerPosWasZero: null,
+    };
+
+    let previousYaw = firstYaw;
+    let previousPitch = firstPitch;
+
+    let traveled = 0;
+    let segmentIndex = 0;
+    let cachedSpeed = _cameraState.speed;
+    let cachedLookAheadDistance = _cameraState.lookAheadDistance;
+    let cachedMinPitch = minPitch;
+    let cachedMaxPitch = maxPitch;
+    let tickCounter = 0;
+
+    _cameraState.isRunning = true;
+    PathCameraSetupUI.RefreshControlNotice(dirPlayer);
+
+    Player.SetDirectorCurrentStatus(
+      dirPlayer,
+      DirectorStateType.CameraPathActive,
+    );
+
+    while (
+      traveled < totalLength &&
+      _cameraState.isRunning === true &&
+      _cameraState.reset === false
+    ) {
+      if (tickCounter % camParamsRefreshTicks === 0) {
+        cachedSpeed = _cameraState.speed;
+        cachedLookAheadDistance = _cameraState.lookAheadDistance;
+        cachedMinPitch = -DegToRad(_cameraState.maxPitchUpDeg);
+        cachedMaxPitch = DegToRad(_cameraState.maxPitchDownDeg);
+      }
+      tickCounter++;
+
+      traveled = Math.min(
+        traveled + Math.max(cachedSpeed, 0.001) * DT,
+        totalLength,
+      );
+
+      while (
+        segmentIndex < segmentLengths.length - 1 &&
+        traveled > cumulativeDistances[segmentIndex + 1]
+      ) {
+        segmentIndex++;
+      }
+
+      const segStart = path[segmentIndex];
+      const segEnd = path[segmentIndex + 1];
+      const segLen = segmentLengths[segmentIndex];
+      const segStartDist = cumulativeDistances[segmentIndex];
+
+      const localT = segLen <= 0 ? 1 : (traveled - segStartDist) / segLen;
+
+      const posX = V3.Lerp(segStart.x, segEnd.x, localT);
+      const posY = V3.Lerp(segStart.y, segEnd.y, localT);
+      const posZ = V3.Lerp(segStart.z, segEnd.z, localT);
+
+      const tracked = PlayerTracking.GetPosition(dirPlayer, trackedState);
+      const trackedPlayerPos = tracked ? tracked.effectivePos : null;
+
+      const lookDistance = Math.min(
+        traveled + cachedLookAheadDistance,
+        totalLength,
+      );
+
+      let lookSegmentIndex = segmentIndex;
+      while (
+        lookSegmentIndex < segmentLengths.length - 1 &&
+        lookDistance > cumulativeDistances[lookSegmentIndex + 1]
+      ) {
+        lookSegmentIndex++;
+      }
+
+      const lookStart = path[lookSegmentIndex];
+      const lookEnd = path[lookSegmentIndex + 1];
+      const lookSegLen = segmentLengths[lookSegmentIndex];
+      const lookSegStartDist = cumulativeDistances[lookSegmentIndex];
+
+      const lookT =
+        lookSegLen <= 0 ? 1 : (lookDistance - lookSegStartDist) / lookSegLen;
+
+      const lookX = V3.Lerp(lookStart.x, lookEnd.x, lookT);
+      const lookY = V3.Lerp(lookStart.y, lookEnd.y, lookT);
+      const lookZ = V3.Lerp(lookStart.z, lookEnd.z, lookT);
+
+      const targetX = trackedPlayerPos ? trackedPlayerPos.x : lookX;
+      const targetY = trackedPlayerPos ? trackedPlayerPos.y : lookY;
+      const targetZ = trackedPlayerPos ? trackedPlayerPos.z : lookZ;
+
+      const targetYaw = YawTowards(
+        V3.Create(posX, posY, posZ),
+        V3.Create(targetX, targetY, targetZ),
+      );
+      const targetPitch = Clamp(
+        PitchTowards(
+          V3.Create(posX, posY, posZ),
+          V3.Create(targetX, targetY, targetZ),
+        ),
+        cachedMinPitch,
+        cachedMaxPitch,
+      );
+
+      const isFinalTick = traveled >= totalLength;
+
+      const yaw = isFinalTick
+        ? targetYaw
+        : LerpAngleRad(previousYaw, targetYaw, rotationSmoothing);
+
+      const pitch = isFinalTick
+        ? targetPitch
+        : LerpAngleRad(previousPitch, targetPitch, rotationSmoothing);
+
+      previousYaw = yaw;
+      previousPitch = pitch;
+
+      SetCameraTransform(cam, V3.Create(posX, posY, posZ), pitch, yaw);
+
+      await mod.Wait(DT);
+    }
+
+    FinalizeLoopedCameraMove(dirPlayer, points, StartPathCamera);
+  }
+
+  function FinalizeLoopedCameraMove(
+    dirPlayer: mod.Player,
+    points?: V3[],
+    restartFn?: (player: mod.Player, points: V3[]) => Promise<void> | void,
+  ): void {
+    if (!mod.IsPlayerValid(dirPlayer)) {
+      _cameraState.isRunning = false;
+      _cameraState.reset = false;
+      return;
+    }
+
+    if (_cameraState.reset === true) {
+      _cameraState.reset = false;
+      if (restartFn && points) restartFn(dirPlayer, points);
+      return;
+    }
+
+    if (_cameraState.isRunning === true) {
+      if (restartFn && points) restartFn(dirPlayer, points);
+      return;
+    }
+
+    //DeletePlayerUI(dirPlayer);
+    mod.SetCameraTypeForPlayer(dirPlayer, mod.Cameras.FirstPerson);
+    Player.SetDirectorCurrentStatus(
+      dirPlayer,
+      DirectorStateType.CameraPathSetup,
+    );
+
+    UnspawnPathCameraInteractPoint(dirPlayer);
+    PathCameraSetupUI.RefreshControlNotice(dirPlayer);
+    PathCameraSetupUI.HideCameraControlMenu(dirPlayer);
+    PathCameraSetupUI.ShowPathControlMenu(dirPlayer);
+    mod.EnableAllInputRestrictions(dirPlayer, false);
+  }
+
+  /************************
+   * VFX
+   *************************/
+
+  namespace VFX {
+    export function StartLoop(): void {
+      LoopSpawnAroundCamera(_cameraObject);
+    }
+
+    export function StopLoop(): void {
+      _vfxState.isRunning = false;
+    }
+
+    async function LoopSpawnAroundCamera(cam: mod.FixedCamera): Promise<void> {
+      if (_vfxState.isRunning) return;
+
+      _vfxState.isRunning = true;
+      _vfxState.previousCheckPos = null;
+
+      while (_vfxState.isRunning === true && _cameraState.isRunning === true) {
+        await mod.Wait(_config.vfxConfig.checkInterval);
+
+        const camPos = Vector.ToV3(mod.GetObjectPosition(cam));
+
+        if (_vfxState.previousCheckPos === null) {
+          _vfxState.previousCheckPos = camPos;
+          continue;
+        }
+
+        const movedDistance = V3.DistanceBetween(
+          _vfxState.previousCheckPos,
+          camPos,
+          DistanceType.XYZ,
+        ).full;
+        _vfxState.previousCheckPos = camPos;
+
+        if (movedDistance < _config.vfxConfig.minMoveDistance) {
+          continue;
+        }
+
+        if (Math.random() > _vfxState.spawnChance) {
+          continue;
+        }
+
+        const selectedVFX = GetWeightedRandomVFX(_vfxState.inventory);
+        if (selectedVFX === null) {
+          continue;
+        }
+
+        const spawnPos = GetRandomPointAroundCameraXZ(
+          camPos,
+          selectedVFX,
+          _config.vfxConfig.radius,
+        );
+
+        Spawn(selectedVFX, V3.ToVector(spawnPos));
+      }
+
+      _vfxState.isRunning = false;
+      _vfxState.previousCheckPos = null;
+    }
+
+    export async function Spawn(
+      vfx: mod.RuntimeSpawn_Common,
+      pos: mod.Vector,
+      enabled: boolean = true,
+      params?: { isContinuous?: boolean; duration?: number; rotation?: V3 },
+    ): Promise<mod.VFX> {
+      const nParams = {
+        isContinuous: params?.isContinuous ?? false,
+        duration: params?.duration ?? 30,
+        rotation: params?.rotation ?? V3.Zero(),
+      };
+
+      const spawnedVFX: mod.VFX = mod.SpawnObject(
+        vfx,
+        pos,
+        V3.ToVector(nParams.rotation),
+      );
+      await mod.Wait(SD);
+
+      mod.EnableVFX(spawnedVFX, enabled);
+
+      if (!nParams.isContinuous) {
+        (async () => {
+          await mod.Wait(nParams.duration);
+          mod.EnableVFX(spawnedVFX, false);
+          await mod.Wait(2);
+          mod.UnspawnObject(spawnedVFX);
+        })();
+      }
+
+      return spawnedVFX;
+    }
+
+    function GetClosestPathPointToCamera(
+      cam: mod.FixedCamera,
+    ): PathPoint | null {
+      if (_pathState.points.length === 0) return null;
+
+      const camPos = Vector.ToV3(mod.GetObjectPosition(cam));
+
+      let closestPoint: PathPoint | null = null;
+      let closestDistance = Number.MAX_VALUE;
+
+      for (const point of _pathState.points) {
+        const dist = V3.DistanceBetween(
+          camPos,
+          point.pos,
+          DistanceType.XYZ,
+        ).full;
+
+        if (dist < closestDistance) {
+          closestDistance = dist;
+          closestPoint = point;
+        }
+      }
+
+      return closestPoint;
+    }
+
+    function GetRandomPointAroundCameraXZ(
+      camPos: V3,
+      selectedFx: mod.RuntimeSpawn_Common,
+      radius: number,
+    ): V3 {
+      const safeRadius = Math.max(0, radius);
+
+      const camRot = Vector.ToV3(mod.GetObjectRotation(_cameraObject));
+
+      const halfConeRad = Math.PI / 2; // 180 degree cone in front of the camera (90 degrees left and 90 degrees right)
+      const angle = camRot.y + (Math.random() * Math.PI - halfConeRad);
+
+      const entry = _vfxState.inventory.find((e) => e.vfx === selectedFx);
+
+      const rawMinDistance = entry?.minDistance ?? 0;
+      const rawMaxDistance = entry?.maxDistance ?? safeRadius;
+
+      const minDistance = Math.min(Math.max(0, rawMinDistance), safeRadius);
+      const maxDistance = Math.min(
+        Math.max(minDistance, rawMaxDistance),
+        safeRadius,
+      );
+
+      const distance =
+        Math.random() * (maxDistance - minDistance) + minDistance;
+
+      const closestPoint = GetClosestPathPointToCamera(_cameraObject);
+      const pointGroundY = closestPoint ? closestPoint.playerPosY : camPos.y;
+
+      return V3.Create(
+        camPos.x + Math.sin(angle) * distance,
+        pointGroundY,
+        camPos.z + Math.cos(angle) * distance,
+      );
+    }
+
+    function GetWeightedRandomVFX(
+      entries: VFXSpawnEntry[],
+    ): mod.RuntimeSpawn_Common | null {
+      let totalWeight = 0;
+
+      for (const entry of entries) {
+        if (entry.weight > 0) {
+          totalWeight += entry.weight;
+        }
+      }
+
+      if (totalWeight <= 0) return null;
+
+      let roll = Math.random() * totalWeight;
+
+      for (const entry of entries) {
+        if (entry.weight <= 0) continue;
+
+        roll -= entry.weight;
+
+        if (roll <= 0) {
+          return entry.vfx;
+        }
+      }
+
+      return entries[entries.length - 1]?.vfx ?? null;
+    }
+  }
+
+  /************************
+   * UI HELPERS
+   *************************/
+
+  function FormatMessageForValue(
+    rowId: TrackedCamSettingsRowId | TrackedPathPointsRowId,
+  ): mod.Message {
+    const value =
+      rowId in _trackedCamSettingsInfo
+        ? _trackedCamSettingsInfo[rowId as TrackedCamSettingsRowId]
+        : _trackedPathPointsInfo[rowId as TrackedPathPointsRowId];
+
+    if (value == null) {
+      return mod.Message("PCT_NA");
+    }
+
+    if (typeof value === "object" && mod.IsPlayerValid(value as mod.Player)) {
+      return mod.Message("PCT_{}", value as mod.Player);
+    } else if (typeof value === "boolean") {
+      return mod.Message(value ? "PCT_YES" : "PCT_NO");
+    } else if (typeof value === "number") {
+      if (rowId.includes("Deg")) {
+        return mod.Message("PCT_NUMBER_DEGREE", value);
+      } else if (rowId.includes("PERCENT")) {
+        return mod.Message("PCT_NUMBER_PERCENT", value);
+      } else if (rowId.includes("Meters")) {
+        return mod.Message("PCT_NUMBER_METERS", value);
+      } else if (rowId.includes("status")) {
+        if (value === PathPointsStatus.None) {
+          return mod.Message("PCT_PATH_POINTS_STATUS_READY");
+        } else if (value === PathPointsStatus.Selected) {
+          return mod.Message("PCT_PATH_POINTS_STATUS_SELECTED");
+        } else if (value === PathPointsStatus.Moving) {
+          return mod.Message("PCT_PATH_POINTS_STATUS_MOVING");
+        } else {
+          return mod.Message("PCT_ERROR");
+        }
+      } else if (rowId.includes("TargetType")) {
+        if (value === CameraTargetType.Path) {
+          return mod.Message("PCT_TARGET_TYPE_PATH");
+        } else if (value === CameraTargetType.Player) {
+          return mod.Message("PCT_TARGET_TYPE_PLAYER");
+        } else {
+          return mod.Message("PCT_ERROR");
+        }
+      } else {
+        return mod.Message("PCT_{}", value);
+      }
+    } else if (
+      typeof value === "object" &&
+      "x" in value &&
+      "y" in value &&
+      "z" in value
+    ) {
+      return mod.Message(
+        "PCT_V3_XZ",
+        Math.round(value.x as number),
+        Math.round(value.z as number),
+      );
+    } else {
+      return mod.Message("PCT_ERROR");
+    }
+  }
+
+  function SyncTrackedCamSettingsInfo() {
+    _trackedCamSettingsInfo.cameraSpeed = _cameraState.speed;
+    _trackedCamSettingsInfo.maxPitchUpDeg = _cameraState.maxPitchUpDeg;
+    _trackedCamSettingsInfo.maxPitchDownDeg = _cameraState.maxPitchDownDeg;
+    _trackedCamSettingsInfo.cornerRadius = _pathState.cornerRadius;
+    _trackedCamSettingsInfo.lookAheadDistance = _cameraState.lookAheadDistance;
+    _trackedCamSettingsInfo.cameraTargetType = _cameraState.target.type;
+    _trackedCamSettingsInfo.cameraTarget = _cameraState.target.playerObject;
+    _trackedCamSettingsInfo.vfxFrequencyPercent = _vfxState.spawnChance * 100;
+  }
+
+  function SyncTrackedPathPointsInfo() {
+    _trackedPathPointsInfo.status = _pathState.inSelection
+      ? PathPointsStatus.Selected
+      : _pathState.isMoving
+        ? PathPointsStatus.Moving
+        : PathPointsStatus.None;
+    _trackedPathPointsInfo.count = _pathState.points.length;
+    _trackedPathPointsInfo.creationDistanceMeters =
+      _pathState.pointCreationDistance;
+    _trackedPathPointsInfo.totalLengthMeters = Path.CalculateLength(
+      _pathState.points,
+    );
   }
 
   /************************
@@ -3435,14 +5090,6 @@ export namespace PCT {
     export function Init(player: mod.Player): void {
       const ps = Player.GetOrCreate(player);
       if (ps === null) return;
-
-      if (Player.HasAssignedDirector()) {
-        mod.DisplayHighlightedWorldLogMessage(
-          mod.Message("PCT_DIRECTOR_ALREADY_ASSIGNED"),
-          player,
-        );
-        return;
-      }
 
       mod.EnableUIInputMode(true, player);
 
@@ -3518,7 +5165,7 @@ export namespace PCT {
           y: layout.titleHeight + 10,
           width: layout.width - 80,
           height: layout.titleHeight,
-          message: mod.Message(""),
+          message: mod.Message("PCT_EMPTY_STRING"),
           textAnchor: mod.UIAnchor.Center,
           textSize: 18,
           textColor: PCT_UI.COLORS.WHITE,
@@ -3530,7 +5177,7 @@ export namespace PCT {
         player,
       );
 
-      new PCT_UI.Button(
+      ps.ui.directorCodeEntryUI.closeButton = new PCT_UI.Button(
         {
           parent: ps.ui.directorCodeEntryUI.root,
           anchor: mod.UIAnchor.BottomCenter,
@@ -3573,7 +5220,7 @@ export namespace PCT {
           PCT_ErrorLogger.New(
             DirectorCodeEntryUI.Init.name,
             `Failed to create button for digit ${entry.digit}`,
-            3,
+            2,
           );
           DirectorCodeEntryUI.Destroy(mod.GetObjId(player));
           return;
@@ -3611,8 +5258,8 @@ export namespace PCT {
         if (enteredCode.length < passcodeLength) {
           const msg =
             Number(enteredCode) === 0
-              ? mod.Message("")
-              : mod.Message("{}", Number(enteredCode));
+              ? mod.Message("PCT_EMPTY_STRING")
+              : mod.Message("PCT_{}", Number(enteredCode));
           codeLabel.setMessage(msg);
           codeLabel.textColor = PCT_UI.COLORS.WHITE;
           return;
@@ -3634,11 +5281,21 @@ export namespace PCT {
           button.setColorBase(feedbackColor);
         }
 
+        if (isCorrect) {
+          pps.ui.directorCodeEntryUI.closeButton?.setEnabled(false);
+        }
+
         await mod.Wait(1);
 
         if (isCorrect) {
-          Player.SetIsDirector(player, true);
-          InitializeDirectorChecks(player);
+          Player.AssignAsDirector(player);
+          InitializeDirectorChecks(player).catch((error: unknown) => {
+            PCT_ErrorLogger.New(
+              DirectorCodeEntryUI.Init.name + " (OnDigitPressed)",
+              `Director checks failed: ${String(error)}`,
+              5,
+            );
+          });
 
           mod.EnableUIInputMode(false, pressPlayer);
           codeUI.root.hide();
@@ -3650,7 +5307,7 @@ export namespace PCT {
 
         codeUI.inputEnabled = true;
         pps.enteredDirectorCode = "";
-        codeLabel.setMessage(mod.Message(""));
+        codeLabel.setMessage(mod.Message("PCT_EMPTY_STRING"));
 
         for (const button of pps.ui.directorCodeEntryUI.digitButtons || []) {
           button.setColorBase(PCT_UI.COLORS.WHITE);
@@ -3674,7 +5331,7 @@ export namespace PCT {
             width: layout.buttonWidth,
             height: layout.buttonHeight,
             label: {
-              message: mod.Message("{}", Number(digit)),
+              message: mod.Message("PCT_{}", Number(digit)),
               textColor: PCT_UI.COLORS.WHITE,
               textAlpha: 1,
               textSize: 24,
@@ -3706,14 +5363,14 @@ export namespace PCT {
   }
 
   namespace DirectorMenuUI {
-    export function Init(player: mod.Player): void {
-      const ps = Player.GetOrCreate(player);
+    export function Init(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
       if (ps === null) return;
 
-      mod.EnableUIInputMode(true, player);
+      mod.EnableUIInputMode(true, dirPlayer);
 
       if (ps.ui.directorMenuUI.root) {
-        ps.ui.directorMenuUI.root.show();
+        DirectorMenuUI.Show(dirPlayer);
         return;
       }
 
@@ -3766,35 +5423,63 @@ export namespace PCT {
             },
           ],
         },
-        player,
+        dirPlayer,
       );
 
       const menuButtons = [
         {
           label: mod.Message("PCT_FREE_CAMERA_KEY"),
           onClick: async (buttonPlayer: mod.Player) => {
+            const ps = Player.GetOrCreate(buttonPlayer);
+            if (ps === null) return;
+
             _cameraState.type = CameraType.Free;
-            StartCamera(buttonPlayer, []);
+            StartCamera(buttonPlayer, []).catch((error: unknown) => {
+              PCT_ErrorLogger.New(
+                DirectorMenuUI.Init.name,
+                `Failed to start free camera: ${String(error)}`,
+                4,
+              );
+            });
             root.hide();
             mod.EnableUIInputMode(false, buttonPlayer);
 
-            TargetSelectionUI.Init(buttonPlayer);
-          },
-        },
-        /*{
-          label: mod.Message("PCT_PATH_CAMERA_KEY"),
-          onClick: async (buttonPlayer: mod.Player) => {
-            _cameraState.type = CameraType.Point;
-            // Todo: Start UI for selecting points
+            if (ps.ui.targetSelectionUI.root) {
+              ps.ui.targetSelectionUI.root.show();
+            } else {
+              TargetSelectionUI.Init(buttonPlayer);
+            }
+
+            PathCameraSetupUI.Destroy(mod.GetObjId(buttonPlayer));
           },
         },
         {
-          label: mod.Message("PCT_THIRDPERSON_CAMERA_KEY"),
+          label: mod.Message("PCT_PATH_CAMERA_KEY"),
           onClick: async (buttonPlayer: mod.Player) => {
-            _cameraState.type = CameraType.ThirdPerson;
-            // Todo: Start UI for selecting points
+            const ps = Player.GetOrCreate(buttonPlayer);
+            if (ps === null) return;
+
+            _cameraState.type = CameraType.Path;
+            root.hide();
+            mod.EnableUIInputMode(false, buttonPlayer);
+
+            Player.GivePortalGadget(buttonPlayer);
+
+            if (ps.ui.pathCameraSetupUI.pathPointsMenuRoot) {
+              ps.ui.pathCameraSetupUI.pathPointsMenuRoot.show();
+            } else {
+              PathCameraSetupUI.InitPathControlMenu(buttonPlayer);
+            }
+
+            if (ps.ui.pathCameraSetupUI.cameraControlMenuRoot) {
+              ps.ui.pathCameraSetupUI.cameraControlMenuRoot.hide();
+            } else {
+              PathCameraSetupUI.InitCameraControlMenu(buttonPlayer);
+            }
+
+            TargetSelectionUI.Destroy(mod.GetObjId(buttonPlayer));
           },
-        },*/
+        },
       ];
 
       for (let i = 0; i < menuButtons.length; i++) {
@@ -3829,9 +5514,21 @@ export namespace PCT {
           bgFill: mod.UIBgFill.OutlineThin,
           bgColor: PCT_UI.COLORS.WHITE,
           bgAlpha: 0.8,
-          onClick: () => buttonInfo.onClick(player),
+          onClick: () => buttonInfo.onClick(dirPlayer),
         });
       }
+    }
+
+    export function Show(player: mod.Player): void {
+      const ps = Player.GetOrCreate(player);
+      if (ps === null) return;
+      ps.ui.directorMenuUI.root?.show();
+    }
+
+    export function Hide(player: mod.Player): void {
+      const ps = Player.GetOrCreate(player);
+      if (ps === null) return;
+      ps.ui.directorMenuUI.root?.hide();
     }
 
     export function Destroy(pid: number): void {
@@ -3845,13 +5542,13 @@ export namespace PCT {
   }
 
   namespace TargetSelectionUI {
-    export function Init(player: mod.Player): void {
-      const ps = Player.GetOrCreate(player);
+    export function Init(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
       if (ps === null) return;
 
       const layout = {
         x: 0,
-        y: 30,
+        y: 40,
         width: 500,
         height: 60,
         padding: 15,
@@ -3883,7 +5580,7 @@ export namespace PCT {
             },
           ],
         },
-        player,
+        dirPlayer,
       );
 
       ps.ui.targetSelectionUI.playerLabel = new PCT_UI.Text(
@@ -3894,13 +5591,13 @@ export namespace PCT {
           y: 0,
           width: layout.width,
           height: layout.height,
-          message: mod.Message(""),
+          message: mod.Message("PCT_EMPTY_STRING"),
           textAnchor: mod.UIAnchor.Center,
           textSize: 22,
           textColor: PCT_UI.COLORS.WHITE,
           textAlpha: 0.8,
         },
-        player,
+        dirPlayer,
       );
 
       ps.ui.targetSelectionUI.playerStats = new PCT_UI.Text(
@@ -3911,13 +5608,13 @@ export namespace PCT {
           y: 10,
           width: 70,
           height: 10,
-          message: mod.Message(""),
+          message: mod.Message("PCT_EMPTY_STRING"),
           textColor: PCT_UI.COLORS.WHITE,
           textAlpha: 0.8,
           textSize: 14,
           textAnchor: mod.UIAnchor.CenterLeft,
         },
-        player,
+        dirPlayer,
       );
 
       ps.ui.targetSelectionUI.playerCountInfo = new PCT_UI.Text(
@@ -3928,18 +5625,35 @@ export namespace PCT {
           y: 10,
           width: 10,
           height: 10,
-          message: mod.Message(""),
+          message: mod.Message("PCT_EMPTY_STRING"),
           textColor: PCT_UI.COLORS.WHITE,
           textAlpha: 0.8,
           textSize: 14,
           textAnchor: mod.UIAnchor.CenterRight,
         },
-        player,
+        dirPlayer,
+      );
+
+      new PCT_UI.Text(
+        {
+          parent: ps.ui.targetSelectionUI.root,
+          anchor: mod.UIAnchor.BottomCenter,
+          x: 0,
+          y: -25,
+          width: layout.width,
+          height: 20,
+          message: mod.Message("PCT_SPACE_TO_CYCLE_TARGET"),
+          textColor: PCT_UI.COLORS.WHITE,
+          textAlpha: 0.6,
+          textSize: 14,
+          textAnchor: mod.UIAnchor.Center,
+        },
+        dirPlayer,
       );
     }
 
-    export function Refresh(player: mod.Player): void {
-      const ps = Player.GetOrCreate(player);
+    export function Refresh(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
       if (ps === null) return;
 
       const psui = ps.ui.targetSelectionUI;
@@ -3976,14 +5690,16 @@ export namespace PCT {
         playerKills > 0 && playerDeaths > 0
           ? Math.round((playerKills / playerDeaths + Number.EPSILON) * 100) / 100
           : 0;
-      const statsMsg = kdRatio === 0 ? mod.Message("PCT_PLAYER_STATS", playerKills, playerDeaths) : mod.Message("PCT_PLAYER_STATS_KD", playerKills, playerDeaths, kdRatio);*/
+      const statsMsg = kdRatio === 0
+        ? mod.Message("PCT_PLAYER_STATS", playerKills, playerDeaths)
+        : mod.Message("PCT_PLAYER_STATS_KD", playerKills, playerDeaths, kdRatio);*/
       const statsMsg = mod.Message(
         "PCT_PLAYER_STATS",
         playerKills,
         playerDeaths,
       );
 
-      psui.playerLabel.setMessage(mod.Message("{}", playerTarget));
+      psui.playerLabel.setMessage(mod.Message("PCT_{}", playerTarget));
       psui.playerCountInfo.setMessage(
         mod.Message(
           "PCT_PLAYER_COUNT_INFO",
@@ -4013,6 +5729,867 @@ export namespace PCT {
     }
   }
 
+  namespace PathCameraSetupUI {
+    export function InitPathControlMenu(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+
+      if (ps.ui.pathCameraSetupUI.pathPointsMenuRoot) {
+        ps.ui.pathCameraSetupUI.pathPointsMenuRoot.show();
+        RefreshPathControlMenu(dirPlayer);
+        return;
+      }
+
+      const layout = {
+        rootX: 30,
+        rootY: -50,
+        rootWidth: 375,
+
+        titleY: 10,
+        titleHeight: 30,
+
+        paramsYStart: 50,
+        vPadding: 10,
+        hPadding: 30,
+        rowGap: 5,
+
+        keyTextWidth: 125,
+        textHeight: 25,
+      };
+
+      const rowHeight = layout.textHeight + layout.rowGap + layout.vPadding;
+
+      const paramsHeight = _trackedPathPointsInfoUIRows.length * rowHeight;
+
+      const rootHeight = layout.paramsYStart + paramsHeight + layout.vPadding;
+
+      const root = new PCT_UI.Container(
+        {
+          x: layout.rootX,
+          y: layout.rootY,
+          width: layout.rootWidth,
+          height: rootHeight,
+          anchor: mod.UIAnchor.CenterLeft,
+          bgFill: mod.UIBgFill.Blur,
+          bgAlpha: 1,
+          depth: mod.UIDepth.AboveGameUI,
+          showOutline: true,
+          visible: true,
+          childrenParams: [
+            {
+              type: PCT_UI.Type.Container,
+              x: 0,
+              y: 0,
+              width: layout.rootWidth,
+              height: rootHeight,
+              anchor: mod.UIAnchor.TopLeft,
+              bgFill: mod.UIBgFill.Solid,
+              bgColor: PCT_UI.COLORS.BLACK,
+              bgAlpha: 0.6,
+            },
+            {
+              type: PCT_UI.Type.Text,
+              x: 0,
+              y: layout.titleY,
+              width: layout.rootWidth,
+              height: layout.titleHeight,
+              anchor: mod.UIAnchor.TopCenter,
+              textSize: 18,
+              textColor: PCT_UI.COLORS.WHITE,
+              textAnchor: mod.UIAnchor.Center,
+              message: mod.Message("PCT_PATHPOINTS_SETTINGS"),
+            },
+          ],
+        },
+        dirPlayer,
+      );
+
+      ps.ui.pathCameraSetupUI.pathPointsMenuRoot = root;
+      ps.ui.pathCameraSetupUI.trackedPathPointsInfo = [];
+
+      for (let i = 0; i < _trackedPathPointsInfoUIRows.length; i++) {
+        CreatePathPointsInfoRow(i);
+      }
+
+      RefreshPathControlMenu(dirPlayer);
+
+      function CreatePathPointsInfoRow(index: number): void {
+        const schema = _trackedPathPointsInfoUIRows[index];
+        const initialValue = _trackedPathPointsInfo[schema.id];
+
+        const rowY = layout.paramsYStart + index * rowHeight;
+        const keyY = rowY;
+
+        CreateDivider(keyY);
+
+        const keyText = CreateKeyText(schema.key, keyY);
+        const valueText = CreateValueText(schema.id, keyY);
+
+        ps!.ui.pathCameraSetupUI.trackedPathPointsInfo!.push({
+          id: schema.id,
+          key: keyText,
+          value: valueText,
+          lastRenderedValue: initialValue,
+        });
+      }
+
+      function CreateDivider(y: number): void {
+        new PCT_UI.Container(
+          {
+            parent: root,
+            x: 0,
+            y: y - 2,
+            width: layout.rootWidth - layout.hPadding * 2,
+            height: 1,
+            anchor: mod.UIAnchor.TopCenter,
+            bgFill: mod.UIBgFill.Solid,
+            bgColor: PCT_UI.COLORS.WHITE,
+            bgAlpha: 0.1,
+          },
+          dirPlayer,
+        );
+      }
+
+      function CreateKeyText(messageKey: string, y: number): PCT_UI.Text {
+        return new PCT_UI.Text(
+          {
+            parent: root,
+            x: layout.hPadding,
+            y: y + 4,
+            width: layout.keyTextWidth,
+            height: layout.textHeight,
+            anchor: mod.UIAnchor.TopLeft,
+            textSize: 16,
+            textColor: PCT_UI.COLORS.WHITE,
+            textAnchor: mod.UIAnchor.CenterLeft,
+            message: mod.Message(messageKey),
+          },
+          dirPlayer,
+        );
+      }
+
+      function CreateValueText(
+        schemaId: TrackedPathPointsRowId,
+        y: number,
+      ): PCT_UI.Text {
+        const msg = FormatMessageForValue(schemaId);
+
+        return new PCT_UI.Text(
+          {
+            parent: root,
+            x: layout.hPadding + layout.keyTextWidth,
+            y: y + 4,
+            width: layout.rootWidth - layout.hPadding * 2 - layout.keyTextWidth,
+            height: layout.textHeight,
+            anchor: mod.UIAnchor.TopLeft,
+            textSize: 16,
+            textAlpha: 0.8,
+            textColor: PCT_UI.COLORS.WHITE,
+            textAnchor: mod.UIAnchor.CenterRight,
+            message: msg,
+          },
+          dirPlayer,
+        );
+      }
+    }
+
+    export function ShowPathControlMenu(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+      ps.ui.pathCameraSetupUI.pathPointsMenuRoot?.show();
+      RefreshPathControlMenu(dirPlayer);
+    }
+
+    export function HidePathControlMenu(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+      ps.ui.pathCameraSetupUI.pathPointsMenuRoot?.hide();
+    }
+
+    export function RefreshPathControlMenu(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+
+      const trackedPathPointsInfo =
+        ps.ui.pathCameraSetupUI.trackedPathPointsInfo;
+      if (!trackedPathPointsInfo) return;
+
+      SyncTrackedPathPointsInfo();
+
+      for (const row of trackedPathPointsInfo) {
+        const nextValue = _trackedPathPointsInfo[row.id];
+
+        if (row.lastRenderedValue === nextValue) continue;
+
+        row.value.setMessage(FormatMessageForValue(row.id));
+        row.lastRenderedValue = nextValue;
+      }
+    }
+
+    export async function InitMovePointTipWindow(
+      dirPlayer: mod.Player,
+    ): Promise<void> {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null || ps.ui.pathCameraSetupUI.pathMoveTipShown) return;
+
+      if (ps.ui.pathCameraSetupUI.movePointTipRoot) {
+        ps.ui.pathCameraSetupUI.movePointTipRoot.show();
+        return;
+      }
+
+      const layout = {
+        x: 0,
+        y: 200,
+        width: 350,
+        height: 100,
+      };
+
+      ps.ui.pathCameraSetupUI.movePointTipRoot = new PCT_UI.Container(
+        {
+          x: layout.x,
+          y: layout.y,
+          width: layout.width,
+          height: layout.height,
+          anchor: mod.UIAnchor.Center,
+          bgFill: mod.UIBgFill.Blur,
+          bgAlpha: 1,
+          depth: mod.UIDepth.AboveGameUI,
+          showOutline: true,
+          visible: true,
+          childrenParams: [
+            {
+              type: PCT_UI.Type.Container,
+              x: 0,
+              y: 0,
+              width: layout.width,
+              height: layout.height,
+              anchor: mod.UIAnchor.TopLeft,
+              bgFill: mod.UIBgFill.Solid,
+              bgColor: PCT_UI.COLORS.BLACK,
+              bgAlpha: 0.8,
+            },
+            {
+              type: PCT_UI.Type.Text,
+              x: 0,
+              y: 0,
+              width: layout.width,
+              height: layout.height,
+              anchor: mod.UIAnchor.Center,
+              textSize: 16,
+              textColor: PCT_UI.COLORS.WHITE,
+              textAnchor: mod.UIAnchor.Center,
+              message: mod.Message("PCT_MOVE_POINT_TIP"),
+            },
+          ],
+        },
+        dirPlayer,
+      );
+
+      ps.ui.pathCameraSetupUI.pathMoveTipShown = true;
+
+      while (!Player.IsAiming(dirPlayer)) {
+        await mod.Wait(1);
+      }
+
+      ps.ui.pathCameraSetupUI.movePointTipRoot.hide();
+    }
+
+    export function ShowMovePointTipWindow(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+      ps.ui.pathCameraSetupUI.movePointTipRoot?.show();
+    }
+
+    export function HideMovePointTipWindow(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+      ps.ui.pathCameraSetupUI.movePointTipRoot?.hide();
+    }
+
+    export function DestroyMovePointTipWindow(pid: number): void {
+      const ps = Player.GetById(pid);
+      if (ps === null) return;
+      if (ps.ui.pathCameraSetupUI.movePointTipRoot) {
+        ps.ui.pathCameraSetupUI.movePointTipRoot.destroy();
+        ps.ui.pathCameraSetupUI.movePointTipRoot = null;
+        ps.ui.pathCameraSetupUI.pathMoveTipShown = false;
+      }
+    }
+
+    export function InitCameraControlMenu(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+
+      if (ps.ui.pathCameraSetupUI.cameraControlMenuRoot) {
+        ps.ui.pathCameraSetupUI.cameraControlMenuRoot.show();
+        RefreshCameraControlMenu(dirPlayer);
+        return;
+      }
+
+      const layout = {
+        rootX: 30,
+        rootY: -50,
+        rootWidth: 220,
+
+        titleY: 10,
+        titleHeight: 30,
+
+        paramsYStart: 50,
+        padding: 10,
+        rowGap: 5,
+
+        textWidth: 200,
+        textHeight: 25,
+
+        selectorButtonWidth: 25,
+        stopButtonWidth: 200,
+        stopButtonHeight: 30,
+      };
+
+      const rowHeight =
+        layout.textHeight + layout.rowGap + layout.textHeight + layout.padding;
+
+      const paramsHeight = _trackedCamSettingsInfoUIRows.length * rowHeight;
+
+      const rootHeight =
+        layout.paramsYStart +
+        paramsHeight +
+        layout.padding * 2 +
+        layout.stopButtonHeight;
+
+      const root = new PCT_UI.Container(
+        {
+          x: layout.rootX,
+          y: layout.rootY,
+          width: layout.rootWidth,
+          height: rootHeight,
+          anchor: mod.UIAnchor.CenterLeft,
+          bgFill: mod.UIBgFill.Blur,
+          bgAlpha: 1,
+          depth: mod.UIDepth.AboveGameUI,
+          showOutline: true,
+          visible: false,
+          childrenParams: [
+            {
+              type: PCT_UI.Type.Container,
+              x: 0,
+              y: 0,
+              width: layout.rootWidth,
+              height: rootHeight,
+              anchor: mod.UIAnchor.TopLeft,
+              bgFill: mod.UIBgFill.Solid,
+              bgColor: PCT_UI.COLORS.BLACK,
+              bgAlpha: 0.6,
+            },
+            {
+              type: PCT_UI.Type.Text,
+              x: 0,
+              y: layout.titleY,
+              width: layout.textWidth,
+              height: layout.titleHeight,
+              anchor: mod.UIAnchor.TopCenter,
+              textSize: 18,
+              textColor: PCT_UI.COLORS.WHITE,
+              textAnchor: mod.UIAnchor.Center,
+              message: mod.Message("PCT_CAMERA_PATH_SETTINGS"),
+            },
+          ],
+        },
+        dirPlayer,
+      );
+
+      ps.ui.pathCameraSetupUI.cameraControlMenuRoot = root;
+      ps.ui.pathCameraSetupUI.buttons = [];
+      ps.ui.pathCameraSetupUI.trackedCamSettingsInfo = [];
+
+      for (let i = 0; i < _trackedCamSettingsInfoUIRows.length; i++) {
+        CreateCameraSettingRow(i);
+      }
+
+      CreateStopButton();
+      RefreshCameraControlMenu(dirPlayer);
+
+      InitControlNotice(dirPlayer);
+
+      function CreateCameraSettingRow(index: number): void {
+        const schema = _trackedCamSettingsInfoUIRows[index];
+        const initialValue = _trackedCamSettingsInfo[schema.id];
+
+        const rowY = layout.paramsYStart + index * rowHeight;
+        const keyY = rowY;
+        const controlY = rowY + layout.textHeight;
+
+        CreateDivider(keyY);
+
+        const keyText = CreateKeyText(schema.key, keyY);
+        const valueText = CreateValueText(schema.id, controlY);
+
+        CreateSelectorButton(
+          "PCT_<",
+          controlY,
+          mod.UIAnchor.TopLeft,
+          async () => {
+            AdjustTrackedCamSettingsValue(schema.id, -schema.step);
+            RefreshCameraControlMenu(dirPlayer);
+          },
+        );
+
+        CreateSelectorButton(
+          "PCT_>",
+          controlY,
+          mod.UIAnchor.TopRight,
+          async () => {
+            AdjustTrackedCamSettingsValue(schema.id, schema.step);
+            RefreshCameraControlMenu(dirPlayer);
+          },
+        );
+
+        ps!.ui.pathCameraSetupUI.trackedCamSettingsInfo!.push({
+          id: schema.id,
+          key: keyText,
+          value: valueText,
+          lastRenderedValue: initialValue,
+        });
+      }
+
+      function CreateKeyText(messageKey: string, y: number): PCT_UI.Text {
+        return new PCT_UI.Text(
+          {
+            parent: root,
+            x: 0,
+            y,
+            width: layout.textWidth,
+            height: layout.textHeight,
+            anchor: mod.UIAnchor.TopCenter,
+            textSize: 16,
+            textColor: PCT_UI.COLORS.WHITE,
+            textAnchor: mod.UIAnchor.Center,
+            message: mod.Message(messageKey),
+          },
+          dirPlayer,
+        );
+      }
+
+      function CreateValueText(
+        id: TrackedCamSettingsRowId,
+        y: number,
+      ): PCT_UI.Text {
+        return new PCT_UI.Text(
+          {
+            parent: root,
+            x: 0,
+            y,
+            width:
+              layout.rootWidth -
+              (layout.padding +
+                layout.selectorButtonWidth +
+                layout.padding * 2),
+            height: layout.textHeight,
+            anchor: mod.UIAnchor.TopCenter,
+            textSize: 16,
+            textColor: PCT_UI.COLORS.WHITE,
+            textAnchor: mod.UIAnchor.Center,
+            message: FormatMessageForValue(id),
+          },
+          dirPlayer,
+        );
+      }
+
+      function CreateSelectorButton(
+        label: string,
+        y: number,
+        anchor: mod.UIAnchor,
+        onClick: (buttonPlayer: mod.Player) => Promise<void>,
+      ): PCT_UI.Button {
+        const button = new PCT_UI.Button(
+          {
+            parent: root,
+            x: layout.padding,
+            y,
+            width: layout.selectorButtonWidth,
+            height: layout.selectorButtonWidth,
+            anchor,
+            bgFill: mod.UIBgFill.OutlineThin,
+            hoverAlpha: 0.8,
+            hoverColor: PCT_UI.COLORS.WHITE,
+            bgColor: PCT_UI.COLORS.WHITE,
+            bgAlpha: 0.2,
+            label: {
+              message: mod.Message(label),
+              textSize: 16,
+              textColor: PCT_UI.COLORS.WHITE,
+              textAlpha: 1,
+              textAnchor: mod.UIAnchor.Center,
+            },
+            onClick,
+          },
+          dirPlayer,
+        );
+
+        ps!.ui.pathCameraSetupUI.buttons!.push(button);
+        return button;
+      }
+
+      function CreateDivider(y: number): void {
+        new PCT_UI.Container(
+          {
+            parent: root,
+            x: 0,
+            y: y - 2,
+            width: layout.textWidth,
+            height: 1,
+            anchor: mod.UIAnchor.TopCenter,
+            bgFill: mod.UIBgFill.Solid,
+            bgColor: PCT_UI.COLORS.WHITE,
+            bgAlpha: 0.1,
+          },
+          dirPlayer,
+        );
+      }
+
+      function CreateStopButton(): PCT_UI.Button {
+        const button = new PCT_UI.Button(
+          {
+            parent: root,
+            x: 0,
+            y: layout.paramsYStart + paramsHeight + layout.padding,
+            width: layout.stopButtonWidth,
+            height: layout.stopButtonHeight,
+            anchor: mod.UIAnchor.TopCenter,
+            bgFill: mod.UIBgFill.OutlineThin,
+            bgColor: PCT_UI.COLORS.WHITE,
+            bgAlpha: 0.2,
+            label: {
+              message: mod.Message("PCT_STOP_CAMERA"),
+              textSize: 16,
+              textColor: PCT_UI.COLORS.WHITE,
+              textAlpha: 1,
+              textAnchor: mod.UIAnchor.Center,
+            },
+            onClick: async (buttonPlayer: mod.Player) => {
+              _cameraState.isRunning = false;
+              RefreshCameraControlMenu(buttonPlayer);
+            },
+          },
+          dirPlayer,
+        );
+
+        ps!.ui.pathCameraSetupUI.buttons!.push(button);
+        return button;
+      }
+    }
+
+    export function ShowCameraControlMenu(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+      ps.ui.pathCameraSetupUI.cameraControlMenuRoot?.show();
+      RefreshCameraControlMenu(dirPlayer);
+    }
+
+    export function HideCameraControlMenu(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+      ps.ui.pathCameraSetupUI.cameraControlMenuRoot?.hide();
+    }
+
+    export function RefreshCameraControlMenu(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+
+      const trackedCamSettingsInfo =
+        ps.ui.pathCameraSetupUI.trackedCamSettingsInfo;
+      if (!trackedCamSettingsInfo) return;
+
+      SyncTrackedCamSettingsInfo();
+
+      for (const row of trackedCamSettingsInfo) {
+        const nextValue = _trackedCamSettingsInfo[row.id];
+
+        RefreshRowState(row);
+
+        if (row.lastRenderedValue === nextValue) continue;
+
+        row.value.setMessage(FormatMessageForValue(row.id));
+        row.lastRenderedValue = nextValue;
+      }
+    }
+
+    function AdjustTrackedCamSettingsValue(
+      id: TrackedCamSettingsRowId,
+      delta: number,
+    ): void {
+      SyncTrackedCamSettingsInfo();
+
+      if (id === "cameraTarget") {
+        AdjustCameraTarget(delta);
+        SyncTrackedCamSettingsInfo();
+        return;
+      }
+
+      const currentValue = _trackedCamSettingsInfo[id];
+      if (typeof currentValue !== "number") return;
+
+      const schema = GetRowSchema(id);
+      if (schema === null) return;
+
+      const finalValue = ClampRowValue(currentValue + delta, schema);
+
+      switch (id) {
+        case "cameraSpeed":
+          _cameraState.speed = finalValue;
+          break;
+
+        case "maxPitchUpDeg":
+          _cameraState.maxPitchUpDeg = finalValue;
+          break;
+
+        case "maxPitchDownDeg":
+          _cameraState.maxPitchDownDeg = finalValue;
+          break;
+
+        case "cornerRadius":
+          _pathState.cornerRadius = finalValue;
+          _cameraState.reset = true;
+          break;
+
+        case "lookAheadDistance":
+          _cameraState.lookAheadDistance = finalValue;
+          break;
+
+        case "cameraTargetType":
+          SetCameraTargetType(finalValue as CameraTargetType);
+          break;
+
+        case "vfxFrequencyPercent":
+          _vfxState.spawnChance = finalValue / 100;
+          if (_vfxState.spawnChance > 0 && !_vfxState.isRunning) {
+            VFX.StartLoop();
+          } else if (_vfxState.spawnChance === 0 && _vfxState.isRunning) {
+            VFX.StopLoop();
+          }
+          break;
+      }
+
+      SyncTrackedCamSettingsInfo();
+    }
+
+    function SetCameraTargetType(targetType: CameraTargetType): void {
+      _cameraState.target.type = targetType;
+
+      if (targetType === CameraTargetType.Player) {
+        const firstPlayer = PlayerTracking.GetFirstDeployedNonDirectorPlayer();
+        _cameraState.target.playerObject = firstPlayer;
+        _cameraState.target.previousTargetPlayerObject = firstPlayer;
+        _cameraState.target.trackingActive = firstPlayer !== null;
+        return;
+      }
+
+      _cameraState.target.playerObject = null;
+      _cameraState.target.trackingActive = false;
+    }
+
+    function AdjustCameraTarget(delta: number): void {
+      if (_cameraState.target.type !== CameraTargetType.Player) return;
+
+      const currentTarget = _cameraState.target.playerObject;
+
+      if (delta > 0) {
+        PlayerTracking.FindNextTarget(currentTarget);
+      } else {
+        PlayerTracking.FindPreviousTarget(currentTarget);
+      }
+
+      SyncTrackedCamSettingsInfo();
+    }
+
+    function GetRowSchema(
+      id: TrackedCamSettingsRowId,
+    ): TrackedCamSettingsRowSchema | null {
+      for (const schema of _trackedCamSettingsInfoUIRows) {
+        if (schema.id === id) return schema;
+      }
+
+      return null;
+    }
+
+    function ClampRowValue(
+      value: number,
+      schema: TrackedCamSettingsRowSchema,
+    ): number {
+      const min = schema.min ?? Number.MIN_SAFE_INTEGER;
+      const max = schema.max ?? Number.MAX_SAFE_INTEGER;
+
+      return value < min ? min : value > max ? max : value;
+    }
+
+    function RefreshRowState(row: TrackedCamSettingsUIRow): void {
+      const cameraInFreeMode =
+        _cameraState.isRunning === true &&
+        _cameraState.type === CameraType.Free;
+
+      if (row.id === "cameraTarget") {
+        RefreshCameraTargetRow(row);
+        return;
+      }
+
+      if (row.id === "cameraTargetType") {
+        row.key.setTextAlpha(cameraInFreeMode ? 0.2 : 1);
+        row.value.setTextAlpha(cameraInFreeMode ? 0.2 : 1);
+        row.value.setTextColor(PCT_UI.COLORS.WHITE);
+        return;
+      }
+
+      row.key.setTextAlpha(1);
+      row.value.setTextAlpha(1);
+      row.value.setTextColor(PCT_UI.COLORS.WHITE);
+    }
+
+    function RefreshCameraTargetRow(row: TrackedCamSettingsUIRow): void {
+      const isPlayerTarget =
+        _cameraState.target.type === CameraTargetType.Player;
+      const targetPlayer = _cameraState.target.playerObject;
+
+      if (
+        isPlayerTarget &&
+        targetPlayer !== null &&
+        mod.IsPlayerValid(targetPlayer) &&
+        Player.IsDeployed(targetPlayer)
+      ) {
+        row.value.setTextColor(PCT_UI.COLORS.GREEN);
+      } else if (isPlayerTarget) {
+        row.value.setTextColor(PCT_UI.COLORS.RED);
+      } else {
+        row.value.setTextColor(PCT_UI.COLORS.WHITE);
+      }
+
+      row.value.setTextAlpha(isPlayerTarget ? 1 : 0.2);
+      row.key.setTextAlpha(isPlayerTarget ? 1 : 0.2);
+    }
+
+    function InitControlNotice(player: mod.Player): void {
+      const ps = Player.GetOrCreate(player);
+      if (ps === null) return;
+
+      const layout = {
+        x: 0,
+        y: 75,
+        width: 700,
+        height: 80,
+      };
+
+      ps.ui.pathCameraSetupUI.controlNoticeRoot = new PCT_UI.Container(
+        {
+          anchor: mod.UIAnchor.TopCenter,
+          depth: mod.UIDepth.AboveGameUI,
+          x: layout.x,
+          y: layout.y,
+          width: layout.width,
+          height: layout.height,
+          bgFill: mod.UIBgFill.Blur,
+          bgAlpha: 0.8,
+          showOutline: true,
+          childrenParams: [
+            {
+              type: PCT_UI.Type.Container,
+              anchor: mod.UIAnchor.TopLeft,
+              x: 0,
+              y: 0,
+              width: layout.width,
+              height: layout.height,
+              bgFill: mod.UIBgFill.Solid,
+              bgColor: PCT_UI.COLORS.BLACK,
+              bgAlpha: 0.6,
+            },
+            {
+              type: PCT_UI.Type.Text,
+              anchor: mod.UIAnchor.TopCenter,
+              x: 0,
+              y: 5,
+              width: layout.width,
+              height: layout.height / 2,
+              textSize: 16,
+              textColor: PCT_UI.COLORS.WHITE,
+              textAlpha: 0.9,
+              message: mod.Message("PCT_CONTROL_NOTICE_INACTIVE_1"),
+            },
+            {
+              type: PCT_UI.Type.Text,
+              anchor: mod.UIAnchor.TopCenter,
+              x: 0,
+              y: -5 + layout.height / 2,
+              width: layout.width,
+              height: layout.height / 2,
+              textSize: 16,
+              textColor: PCT_UI.COLORS.WHITE,
+              textAlpha: 0.7,
+              message: mod.Message("PCT_CONTROL_NOTICE_INACTIVE_2"),
+            },
+          ],
+        },
+        player,
+      );
+    }
+
+    export function RefreshControlNotice(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+      if (!ps.ui.pathCameraSetupUI.controlNoticeRoot) return;
+
+      let firstTextRefreshed = false;
+
+      ps.ui.pathCameraSetupUI.controlNoticeRoot.children.forEach((child) => {
+        if (child instanceof PCT_UI.Text && !firstTextRefreshed) {
+          child.setMessage(
+            _cameraState.isRunning
+              ? mod.Message("PCT_CONTROL_NOTICE_ACTIVE_1")
+              : mod.Message("PCT_CONTROL_NOTICE_INACTIVE_1"),
+          );
+          firstTextRefreshed = true;
+        } else if (child instanceof PCT_UI.Text) {
+          child.setMessage(
+            _cameraState.isRunning
+              ? mod.Message("PCT_CONTROL_NOTICE_ACTIVE_2")
+              : mod.Message("PCT_CONTROL_NOTICE_INACTIVE_2"),
+          );
+        }
+      });
+    }
+
+    export function ToggleCameraControlVisible(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+      if (ps.ui.pathCameraSetupUI.cameraControlMenuRoot) {
+        ps.ui.pathCameraSetupUI.cameraControlMenuRoot.toggle();
+      }
+      if (ps.ui.pathCameraSetupUI.controlNoticeRoot) {
+        ps.ui.pathCameraSetupUI.controlNoticeRoot.toggle();
+      }
+    }
+
+    export function Destroy(pid: number): void {
+      const ps = Player.GetById(pid);
+      if (ps === null) return;
+
+      if (ps.ui.pathCameraSetupUI.pathPointsMenuRoot) {
+        ps.ui.pathCameraSetupUI.pathPointsMenuRoot.destroy();
+        ps.ui.pathCameraSetupUI.pathPointsMenuRoot = null;
+      }
+
+      if (ps.ui.pathCameraSetupUI.cameraControlMenuRoot) {
+        ps.ui.pathCameraSetupUI.cameraControlMenuRoot.destroy();
+        ps.ui.pathCameraSetupUI.cameraControlMenuRoot = null;
+      }
+
+      if (ps.ui.pathCameraSetupUI.controlNoticeRoot) {
+        ps.ui.pathCameraSetupUI.controlNoticeRoot.destroy();
+        ps.ui.pathCameraSetupUI.controlNoticeRoot = null;
+      }
+
+      ps.ui.pathCameraSetupUI.trackedCamSettingsInfo = [];
+      ps.ui.pathCameraSetupUI.buttons = [];
+    }
+  }
+
   /************************
    * PCT Event Handlers
    *************************/
@@ -4028,34 +6605,210 @@ export namespace PCT {
   export async function PCTOnPlayerDeployed(player: mod.Player): Promise<void> {
     if (!mod.IsPlayerValid(player)) return;
 
-    if (Player.GetIsDirector(player)) {
+    const dirPlayer = Player.GetDirectorPlayerObject();
+
+    if (
+      !Player.IsAI(player) &&
+      dirPlayer &&
+      mod.GetObjId(player) === mod.GetObjId(dirPlayer)
+    ) {
+      if (_directorInteractPoint) {
+        mod.UnspawnObject(_directorInteractPoint);
+        _directorInteractPoint = null;
+      }
+
+      if (PCT_WIM.init().getIconExists("director-panel")) {
+        PCT_WIM.init().deleteIcon("director-panel");
+      }
+
+      (async () => {
+        await mod.Wait(0.5);
+
+        const playerPosVector = V3.ToVector(Player.GetEyePosition(dirPlayer));
+
+        _directorInteractPoint = mod.SpawnObject(
+          rtc.InteractPoint,
+          playerPosVector,
+          Vector.Zero(),
+        ) as mod.InteractPoint;
+
+        PCT_WIM.init().createIcon("director-panel", playerPosVector, {
+          icon: mod.WorldIconImages.SquadPing,
+          iconVisible: true,
+          text: mod.Message("PCT_INTERACT_HERE"),
+          textVisible: true,
+          color: PCT_UI.COLORS.RED,
+        });
+      })().catch((error: unknown) => {
+        PCT_ErrorLogger.New(
+          PCTOnPlayerDeployed.name,
+          `Error spawning director interact point: ${String(error)}`,
+          3,
+        );
+      });
+    }
+
+    if (
+      Player.GetIsDirector(player) &&
+      _cameraState.type === CameraType.Free &&
+      _cameraState.isRunning
+    ) {
       await mod.Wait(0.1);
       mod.Teleport(player, V3.ToVector(_directorControlRoomSpawnPos), 0);
     }
+
+    // mod.AddUIIcon appears to be bugged
+    /*if (_showPlayerNametags) {
+      const dirPlayer = Player.GetDirectorPlayerObject();
+      if (!dirPlayer) return;
+
+      mod.AddUIIcon(
+        player,
+        mod.WorldIconImages.Triangle,
+        1,
+        mod.GetObjId(mod.GetTeam(player)) === 1
+          ? PCT_UI.COLORS.BLUE
+          : PCT_UI.COLORS.RED,
+        mod.Message("PCT_{}", player),
+        dirPlayer,
+      );
+    }*/
   }
 
-  export function PCTOnPlayerInteract(
+  export function OnPlayerUndeploy(player: mod.Player): void {
+    if (!mod.IsPlayerValid(player)) return;
+
+    // mod.AddUIIcon appears to be bugged
+    /*if (_showPlayerNametags) {
+      mod.RemoveUIIcon(player);
+    }*/
+  }
+
+  export async function PCTOnPlayerInteract(
     player: mod.Player,
     interactPoint: mod.InteractPoint,
-  ): void {
+  ): Promise<void> {
     const ipId = mod.GetObjId(interactPoint);
+    const ps = Player.Get(player);
 
     if (
       _directorInteractPoint &&
-      ipId === mod.GetObjId(_directorInteractPoint)
+      ipId === mod.GetObjId(_directorInteractPoint) &&
+      !_cameraState.isRunning
     ) {
-      DirectorCodeEntryUI.Init(player);
+      if (!Player.HasAssignedDirector()) {
+        DirectorCodeEntryUI.Init(player);
+      } else {
+        DirectorMenuUI.Init(player);
+      }
+    } else if (
+      ps?.directorState?.pathCameraInteractPoint &&
+      ipId === mod.GetObjId(ps.directorState.pathCameraInteractPoint) &&
+      Player.GetIsDirector(player) &&
+      _cameraState.isRunning
+    ) {
+      PathCameraSetupUI.ToggleCameraControlVisible(player);
+    } else if (
+      _freeCamInteractPoint &&
+      ipId === mod.GetObjId(_freeCamInteractPoint) &&
+      Player.GetIsDirector(player) &&
+      _cameraState.isRunning
+    ) {
+      _cameraState.isRunning = false;
+      mod.Teleport(player, mod.GetObjectPosition(_freeCamInteractPoint), 0);
+      await mod.Wait(SD);
+      mod.Kill(player);
     }
   }
 
-  export function PCTOnPlayerLeaveGame(pid: number): void {
+  export async function PCTOnPlayerLeaveGame(pid: number): Promise<void> {
     const ps = Player.GetById(pid);
     if (!ps) return;
 
     DirectorMenuUI.Destroy(pid);
     DirectorCodeEntryUI.Destroy(pid);
+    PathCameraSetupUI.DestroyMovePointTipWindow(pid);
+
+    if (ps.isDirector) {
+      _cameraState.isRunning = false;
+      _cameraState.reset = false;
+
+      if (_freeCamInteractPoint) {
+        mod.UnspawnObject(_freeCamInteractPoint);
+        _freeCamInteractPoint = null;
+      }
+
+      if (ps.directorState?.pathCameraInteractPoint) {
+        mod.UnspawnObject(ps.directorState.pathCameraInteractPoint);
+        ps.directorState.pathCameraInteractPoint = null;
+      }
+
+      if (_directorInteractPoint) {
+        mod.UnspawnObject(_directorInteractPoint);
+        _directorInteractPoint = null;
+      }
+
+      if (PCT_WIM.init().getIconExists("director-panel")) {
+        PCT_WIM.init().deleteIcon("director-panel");
+      }
+
+      _directorInteractPoint = mod.SpawnObject(
+        rtc.InteractPoint,
+        V3.ToVector(_cameraObjectInitialPos),
+        Vector.Zero(),
+      ) as mod.InteractPoint;
+
+      PCT_WIM.init().createIcon(
+        "director-panel",
+        V3.ToVector(_cameraObjectInitialPos),
+        {
+          icon: mod.WorldIconImages.SquadPing,
+          iconVisible: true,
+          text: mod.Message("PCT_INTERACT_HERE"),
+          textVisible: true,
+          color: PCT_UI.COLORS.RED,
+        },
+      );
+    }
+
+    Player.UnassignAsDirector(pid);
+
+    await mod.Wait(SD);
 
     Player.RemoveById(pid);
+  }
+
+  export function PCTOnPortalGadgetAimStart(player: mod.Player): void {
+    const ps = Player.GetOrCreate(player);
+    if (!ps?.directorState) return;
+    ps.directorState.actionState.isAimingPortalGadget = true;
+  }
+
+  export function PCTOnPortalGadgetAimStop(player: mod.Player): void {
+    const ps = Player.GetOrCreate(player);
+    if (!ps?.directorState) return;
+    ps.directorState.actionState.isAimingPortalGadget = false;
+  }
+
+  export function PCTOnPortalGadgetFireStart(player: mod.Player): void {
+    const ps = Player.GetOrCreate(player);
+    if (!ps?.directorState) return;
+    ps.directorState.actionState.isFiringPortalGadget = true;
+  }
+
+  export function PCTOnPortalGadgetFireStop(player: mod.Player): void {
+    const ps = Player.GetOrCreate(player);
+    if (!ps?.directorState) return;
+    ps.directorState.actionState.isFiringPortalGadget = false;
+  }
+
+  export function PCTOnPortalGadgetLaserToggle(
+    player: mod.Player,
+    state: boolean,
+  ): void {
+    const ps = Player.GetOrCreate(player);
+    if (!ps?.directorState) return;
+    ps.directorState.actionState.isPortalLaserActive = state;
   }
 }
 
@@ -4065,28 +6818,106 @@ export namespace PCT {
 //***************************************** */
 
 export function OnGameModeStarted() {
-  PCT.Initialize(15001, "1234", false); // Adjust as needed. Optional 'defaultConfig' is also available for additional parameters.
+  PCT.Initialize(1001, "1234"); // Adjust as needed. Optional 'defaultConfig' is also available for additional parameters.
 }
 
 export function OnPlayerDeployed(eventPlayer: mod.Player): void {
-  PCT.PCTOnPlayerDeployed(eventPlayer);
+  PCT.PCTOnPlayerDeployed(eventPlayer).catch((error: unknown) => {
+    void PCT_ErrorLogger.New(
+      OnPlayerDeployed.name,
+      `PCTOnPlayerDeployed failed: ${String(error)}`,
+      10,
+    );
+  });
+}
+
+export function OnPlayerUndeploy(eventPlayer: mod.Player): void {
+  PCT.OnPlayerUndeploy(eventPlayer);
 }
 
 export function OnPlayerInteract(
   eventPlayer: mod.Player,
   eventInteractPoint: mod.InteractPoint,
 ): void {
-  PCT.PCTOnPlayerInteract(eventPlayer, eventInteractPoint);
+  PCT.PCTOnPlayerInteract(eventPlayer, eventInteractPoint).catch(
+    (error: unknown) => {
+      void PCT_ErrorLogger.New(
+        OnPlayerInteract.name,
+        `PCTOnPlayerInteract failed: ${String(error)}`,
+        10,
+      );
+    },
+  );
 }
 
 export function OnPlayerLeaveGame(eventNumber: number): void {
-  PCT.PCTOnPlayerLeaveGame(eventNumber);
+  PCT.PCTOnPlayerLeaveGame(eventNumber).catch((error: unknown) => {
+    void PCT_ErrorLogger.New(
+      OnPlayerLeaveGame.name,
+      `PCTOnPlayerLeaveGame failed: ${String(error)}`,
+      10,
+    );
+  });
 }
 
-export async function OnPlayerUIButtonEvent(
+export function OnPlayerUIButtonEvent(
   eventPlayer: mod.Player,
   eventUIWidget: mod.UIWidget,
   eventUIButtonEvent: mod.UIButtonEvent,
 ) {
-  PCT.PCTOnPlayerUIButtonEvent(eventPlayer, eventUIWidget, eventUIButtonEvent);
+  PCT.PCTOnPlayerUIButtonEvent(
+    eventPlayer,
+    eventUIWidget,
+    eventUIButtonEvent,
+  ).catch((error: unknown) => {
+    void PCT_ErrorLogger.New(
+      OnPlayerUIButtonEvent.name,
+      `PCTOnPlayerUIButtonEvent failed: ${String(error)}`,
+      10,
+    );
+  });
+}
+
+export function OnPortalGadgetAimStart(eventPlayer: mod.Player): void {
+  if (!mod.IsPlayerValid(eventPlayer))
+    console.log("Invalid player in OnPortalGadgetAimStart");
+
+  /*if (PCT.IsPlayerDirector(eventPlayer)) {
+    PCT.PCTOnPortalGadgetAimStart(eventPlayer);
+    return;
+  }*/
+}
+
+export function OnPortalGadgetAimStop(eventPlayer: mod.Player): void {
+  if (!mod.IsPlayerValid(eventPlayer))
+    console.log("Invalid player in OnPortalGadgetAimStop");
+
+  /*if (PCT.IsPlayerDirector(eventPlayer)) {
+    PCT.PCTOnPortalGadgetAimStop(eventPlayer);
+    return;
+  }*/
+}
+
+export function OnPortalGadgetFireStart(eventPlayer: mod.Player): void {
+  if (PCT.IsPlayerDirector(eventPlayer)) {
+    PCT.PCTOnPortalGadgetFireStart(eventPlayer);
+    return;
+  }
+}
+
+export function OnPortalGadgetFireStop(eventPlayer: mod.Player): void {
+  if (PCT.IsPlayerDirector(eventPlayer)) {
+    PCT.PCTOnPortalGadgetFireStop(eventPlayer);
+    return;
+  }
+}
+
+export function OnPortalGadgetLaserToggle(
+  eventPlayer: mod.Player,
+  eventBoolean: boolean,
+): void {
+  if (PCT.IsPlayerDirector(eventPlayer)) {
+    PCT.PCTOnPortalGadgetLaserToggle(eventPlayer, eventBoolean);
+    return;
+  }
 }
