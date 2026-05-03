@@ -1,4 +1,4 @@
-# Portal Camera Toolkit (PCT)
+# Portal Cinematic Toolkit (PCT)
 
 **Portal Camera Toolkit (PCT)** is a Battlefield Portal camera-control module for creating and operating cinematic fixed-camera paths, player-follow cameras and free camera movement.
 
