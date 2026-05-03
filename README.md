@@ -233,8 +233,8 @@ Use this table when integrating PCT into an existing script.
 | `OnPlayerInteract` | `PCT.PCTOnPlayerInteract(...)` | Yes |
 | `OnPlayerLeaveGame` | `PCT.PCTOnPlayerLeaveGame(...)` | Yes |
 | `OnPlayerUIButtonEvent` | `PCT.PCTOnPlayerUIButtonEvent(...)` | Yes |
-| `OnRayCastHit` | `PCT.PCTOnRayCastHit(...)` | Required for collision/raycast behaviour |
-| `OnRayCastMissed` | `PCT.PCTOnRayCastMissed(...)` | Required for collision/raycast behaviour |
+| `OnRayCastHit` | `PCT.PCTOnRayCastHit(...)` | Yes |
+| `OnRayCastMissed` | `PCT.PCTOnRayCastMissed(...)` | Yes |
 | `OnPortalGadgetFireStart` | `PCT.PCTOnPortalGadgetFireStart(...)` | Optional / Not yet utilized |
 | `OnPortalGadgetFireStop` | `PCT.PCTOnPortalGadgetFireStop(...)` | Optional / Not yet utilized |
 | `OnPortalGadgetLaserToggle` | `PCT.PCTOnPortalGadgetLaserToggle(...)` | Optional / Not yet utilized |
