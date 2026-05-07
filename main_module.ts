@@ -1,7 +1,8 @@
 /************************
  * PORTAL CAMERA TOOLKIT (PCT)
  * BY NODONE
- * May 2, 2026
+ * May 7, 2026
+ * v. 1.01
  *************************/
 
 /************************
@@ -1366,7 +1367,7 @@ export namespace PCT_UI {
         PCT_ErrorLogger.New(
           OnButtonClick.name + " (" + runButtonHandler.name + ")",
           `Button Handler failed: ${String(error)}`,
-          0,
+          2,
         );
       });
     };
@@ -1406,7 +1407,7 @@ export namespace PCT {
   enum CameraType {
     Path,
     Free,
-    ThirdPerson,
+    PlayerPreset,
   }
 
   enum PointSelectionType {
@@ -1431,6 +1432,7 @@ export namespace PCT {
     CameraPathSetup,
     CameraPathActive,
     FreeCamActive,
+    PlayerPresetCameraActive,
   }
 
   /************************
@@ -1466,6 +1468,7 @@ export namespace PCT {
       trackingActive: boolean;
       previousTargetPlayerObject: mod.Player | null;
     };
+    playerPresets: PlayerPresetCameraState;
   };
 
   // Free Cam Player Tracking
@@ -1477,6 +1480,21 @@ export namespace PCT {
 
   type FreeCamTrackedPlayerState = TrackedPlayerState & {
     smoothedTrackedPlayerY: number | null;
+  };
+
+  // Player Preset
+
+  type CameraPreset = {
+    name: string;
+    offset: V3; // x = right/left; y = up/down; z = forward/backward
+    hOffset: number;
+    vOffset: number;
+    pitchOffset: number;
+  };
+
+  type PlayerPresetCameraState = {
+    presets: CameraPreset[];
+    selectedPresetIndex: number;
   };
 
   // Path Point
@@ -1626,6 +1644,13 @@ export namespace PCT {
       trackedCamSettingsInfo?: TrackedCamSettingsUIRow[] | null;
       controlNoticeRoot?: PCT_UI.Container | null;
       pathMoveTipShown?: boolean;
+    };
+    playerPresetCameraUI: {
+      root?: PCT_UI.Container | null;
+      presetValue?: PCT_UI.Text | null;
+      buttons?: PCT_UI.Button[] | null;
+      lastRenderedPresetIndex?: number | null;
+      portalGadgetNoticeRoot?: PCT_UI.Container | null;
     };
   };
 
@@ -1854,7 +1879,7 @@ export namespace PCT {
       Vector.Zero(),
     ) as mod.InteractPoint;
 
-    PCT_WIM.init().createIcon(
+    /*PCT_WIM.init().createIcon(
       "director-panel",
       V3.ToVector(_cameraObjectInitialPos),
       {
@@ -1864,7 +1889,7 @@ export namespace PCT {
         textVisible: true,
         color: PCT_UI.COLORS.RED,
       },
-    );
+    );*/
 
     // General Config
 
@@ -1923,6 +1948,352 @@ export namespace PCT {
         playerObject: null,
         trackingActive: false,
         previousTargetPlayerObject: null,
+      },
+      playerPresets: {
+        selectedPresetIndex: 0,
+        presets: [
+          // Rear cameras
+          {
+            name: "PCT_PRESET_MEDIUM_REAR",
+            offset: V3.Create(0, 1.4, -3),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 10, // negative: pitch down; positive: pitch up
+          },
+          {
+            name: "PCT_PRESET_FAR_REAR",
+            offset: V3.Create(0, 2.2, -8),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+          {
+            name: "PCT_PRESET_CLOSE_REAR",
+            offset: V3.Create(0, 0.5, -1),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 5,
+          },
+          {
+            name: "PCT_PRESET_VERY_CLOSE_REAR",
+            offset: V3.Create(0, 0.3, -0.35),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 40,
+          },
+          {
+            name: "PCT_PRESET_VERY_FAR_REAR",
+            offset: V3.Create(0, 5, -22),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+
+          // Shoulder cameras
+          {
+            name: "PCT_PRESET_CLOSE_RIGHT_SHOULDER",
+            offset: V3.Create(-1.4, 0.5, -1),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -18,
+          },
+          {
+            name: "PCT_PRESET_CLOSE_LEFT_SHOULDER",
+            offset: V3.Create(1.4, 0.5, -1),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -18,
+          },
+
+          // High rear cameras
+          {
+            name: "PCT_PRESET_HIGH_MEDIUM_REAR",
+            offset: V3.Create(0, 8, -7),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+          {
+            name: "PCT_PRESET_HIGH_FAR_REAR",
+            offset: V3.Create(0, 8, -14),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+          {
+            name: "PCT_PRESET_VERY_HIGH_MEDIUM_REAR",
+            offset: V3.Create(0, 20, -8),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -12,
+          },
+          {
+            name: "PCT_PRESET_VERY_HIGH_FAR_REAR",
+            offset: V3.Create(0, 12, -18),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -4,
+          },
+          {
+            name: "PCT_PRESET_HIGH_CLOSE_REAR",
+            offset: V3.Create(0, 2.6, -1.2),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 28,
+          },
+
+          // Low rear cameras
+          {
+            name: "PCT_PRESET_LOW_MEDIUM_REAR",
+            offset: V3.Create(0, -0.3, -3.8),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -5,
+          },
+          {
+            name: "PCT_PRESET_LOW_FAR_REAR",
+            offset: V3.Create(0, -0.3, -8),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -5,
+          },
+          {
+            name: "PCT_PRESET_VERY_LOW_MEDIUM_REAR",
+            offset: V3.Create(0, -0.6, -5),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -12,
+          },
+          {
+            name: "PCT_PRESET_VERY_LOW_FAR_REAR",
+            offset: V3.Create(0, -0.6, -9),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -8,
+          },
+          {
+            name: "PCT_PRESET_EXTREMELY_LOW_MEDIUM_REAR",
+            offset: V3.Create(0, -0.85, -5.5),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -14,
+          },
+          {
+            name: "PCT_PRESET_EXTREMELY_LOW_FAR_REAR",
+            offset: V3.Create(0, -0.85, -9.5),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -10,
+          },
+
+          // Right rear cameras
+          {
+            name: "PCT_PRESET_LOW_CLOSE_RIGHT_REAR",
+            offset: V3.Create(0.55, -0.3, -0.9),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -15,
+          },
+          {
+            name: "PCT_PRESET_VERY_CLOSE_RIGHT_REAR",
+            offset: V3.Create(0.9, 0.75, -0.35),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -15,
+          },
+          {
+            name: "PCT_PRESET_HIGH_CLOSE_RIGHT_REAR",
+            offset: V3.Create(3, 2, -1.5),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 5,
+          },
+          {
+            name: "PCT_PRESET_MEDIUM_RIGHT_REAR",
+            offset: V3.Create(5, 2.5, -6),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 6,
+          },
+          {
+            name: "PCT_PRESET_WIDE_RIGHT_REAR",
+            offset: V3.Create(4, 2, -6),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 5,
+          },
+          {
+            name: "PCT_PRESET_HIGH_MEDIUM_RIGHT_REAR",
+            offset: V3.Create(5, 6, -9),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+          {
+            name: "PCT_PRESET_HIGH_FAR_RIGHT_REAR",
+            offset: V3.Create(10, 7, -7),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+
+          // Left rear cameras
+          {
+            name: "PCT_PRESET_HIGH_CLOSE_LEFT_REAR",
+            offset: V3.Create(-3, 2, -1.5),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 5,
+          },
+          {
+            name: "PCT_PRESET_MEDIUM_LEFT_REAR",
+            offset: V3.Create(-5, 2.5, -6),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 6,
+          },
+          {
+            name: "PCT_PRESET_WIDE_LEFT_REAR",
+            offset: V3.Create(-4, 2, -6),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 5,
+          },
+          {
+            name: "PCT_PRESET_HIGH_MEDIUM_LEFT_REAR",
+            offset: V3.Create(-5, 6, -9),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+          {
+            name: "PCT_PRESET_HIGH_FAR_LEFT_REAR",
+            offset: V3.Create(-10, 7, -7),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+
+          // Side cameras
+          {
+            name: "PCT_PRESET_MEDIUM_RIGHT_SIDE",
+            offset: V3.Create(6, 1.5, 0),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 5,
+          },
+          {
+            name: "PCT_PRESET_MEDIUM_LEFT_SIDE",
+            offset: V3.Create(-6, 1.5, 0),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 5,
+          },
+
+          // Front cameras
+          {
+            name: "PCT_PRESET_CLOSE_FRONT",
+            offset: V3.Create(0, 1.2, 2),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -10,
+          },
+          {
+            name: "PCT_PRESET_MEDIUM_FRONT",
+            offset: V3.Create(0, 1.7, 5),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 4,
+          },
+          {
+            name: "PCT_PRESET_FAR_FRONT",
+            offset: V3.Create(0, 2.5, 10),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+          {
+            name: "PCT_PRESET_MEDIUM_RIGHT_FRONT",
+            offset: V3.Create(3, 1.6, 4),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 4,
+          },
+          {
+            name: "PCT_PRESET_MEDIUM_LEFT_FRONT",
+            offset: V3.Create(-3, 1.6, 4),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 4,
+          },
+
+          // Low front cameras
+          {
+            name: "PCT_PRESET_LOW_MEDIUM_FRONT",
+            offset: V3.Create(0, -0.5, 3.2),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -10,
+          },
+          {
+            name: "PCT_PRESET_LOW_MEDIUM_RIGHT_FRONT",
+            offset: V3.Create(2.5, -0.5, 2.6),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -10,
+          },
+          {
+            name: "PCT_PRESET_LOW_MEDIUM_LEFT_FRONT",
+            offset: V3.Create(-2.5, -0.5, 2.6),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: -10,
+          },
+
+          // Top-down cameras
+          {
+            name: "PCT_PRESET_CLOSE_TOP_DOWN",
+            offset: V3.Create(0, 2, -0.1),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+          {
+            name: "PCT_PRESET_MEDIUM_TOP_DOWN",
+            offset: V3.Create(0, 6, -0.1),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+          {
+            name: "PCT_PRESET_FAR_TOP_DOWN",
+            offset: V3.Create(0, 8, -0.1),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+          {
+            name: "PCT_PRESET_VERY_FAR_TOP_DOWN",
+            offset: V3.Create(0, 15, -0.1),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+          {
+            name: "PCT_PRESET_EXTREME_TOP_DOWN",
+            offset: V3.Create(0, 30, -0.1),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+          {
+            name: "PCT_PRESET_MAXIMUM_TOP_DOWN",
+            offset: V3.Create(0, 60, -0.1),
+            hOffset: 0,
+            vOffset: 0,
+            pitchOffset: 0,
+          },
+        ],
       },
     };
 
@@ -2329,6 +2700,7 @@ export namespace PCT {
         pathCameraSetupUI: {
           pathMoveTipShown: false,
         },
+        playerPresetCameraUI: {},
       };
     }
 
@@ -2426,7 +2798,7 @@ export namespace PCT {
         PCT_ErrorLogger.New(
           Player.AssignAsDirector.name,
           "Director is already assigned.",
-          1,
+          3,
         );
         return;
       }
@@ -2642,17 +3014,10 @@ export namespace PCT {
       mod.RemoveEquipment(player, mod.InventorySlots.Throwable);
     }
 
-    public static GivePortalGadget(player: mod.Player): void {
+    public static GivePistolSecondary(player: mod.Player): void {
       if (!Player.IsDeployed(player)) return;
       Player.RemoveAllEquipment(player);
 
-      //TODO re-introduce Portal Gadget once onZoom event function fixed by Battlefield Portal team
-
-      /*mod.AddEquipment(
-        player,
-        mod.Gadgets.Misc_PortalGadget,
-        mod.InventorySlots.GadgetOne,
-      );*/
       mod.AddEquipment(
         player,
         mod.Weapons.Sidearm_ES_57,
@@ -2660,7 +3025,27 @@ export namespace PCT {
       );
       mod.ForceSwitchInventory(
         player,
-        /*mod.InventorySlots.GadgetOne*/ mod.InventorySlots.SecondaryWeapon,
+        mod.InventorySlots.SecondaryWeapon,
+      );
+    }
+
+    public static GivePortalGadget(player: mod.Player): void {
+      if (!Player.IsDeployed(player)) return;
+      Player.RemoveAllEquipment(player);
+
+      mod.AddEquipment(
+        player,
+        mod.Gadgets.Misc_PortalGadget,
+        mod.InventorySlots.GadgetOne,
+      );
+      mod.AddEquipment(
+        player,
+        mod.Weapons.Sidearm_ES_57,
+        mod.InventorySlots.SecondaryWeapon,
+      );
+      mod.ForceSwitchInventory(
+        player,
+        mod.InventorySlots.GadgetOne
       );
     }
 
@@ -3070,8 +3455,8 @@ export namespace PCT {
         ) as mod.Player | null;
 
         if (!possibleTarget) continue;
-        if (mod.Equals(Player.GetDirectorPlayerObject(), possibleTarget))
-          continue;
+        //if (mod.Equals(Player.GetDirectorPlayerObject(), possibleTarget)) TODO: RE-INSERT
+        //  continue;
         if (!mod.IsPlayerValid(possibleTarget)) continue;
         if (!Player.IsDeployed(possibleTarget)) continue;
         if (mod.Equals(possibleTarget, currentTarget)) continue;
@@ -3122,19 +3507,25 @@ export namespace PCT {
       return count;
     }
 
-    function GetTargetPosition(player: mod.Player): V3 {
-      if (!Player.IsDeployed(player)) {
+    function GetTargetPosition(player: mod.Player | null): V3 {
+      if (!player || !mod.IsPlayerValid(player) || !Player.IsDeployed(player)) {
         return V3.Zero();
       }
 
-      /*if (mod.GetPlayerVehicleSeat(player) !== -1) {
-        return Vector.ToV3(
-          mod.GetVehicleState(
-            mod.GetVehicleFromPlayer(player),
-            mod.VehicleStateVector.VehiclePosition,
-          ),
-        );
-      }*/
+      /*try {
+        const seat = mod.GetPlayerVehicleSeat(player);
+
+        if (seat !== -1) {
+          const vehicle = mod.GetVehicleFromPlayer(player);
+
+          return Vector.ToV3(
+            mod.GetVehicleState(
+              vehicle,
+              mod.VehicleStateVector.VehiclePosition,
+            ),
+          );
+        }
+      } catch (error: unknown) { void error; }*/
 
       return Player.GetEyePosition(player);
     }
@@ -3163,7 +3554,7 @@ export namespace PCT {
       if (!CurrentTargetIsValid()) return null;
 
       const trackedPlayerPos = GetTargetPosition(
-        _cameraState.target.playerObject as mod.Player,
+        _cameraState.target.playerObject,
       );
 
       const isZeroVec =
@@ -3533,7 +3924,7 @@ export namespace PCT {
       PathCameraSetupUI.RefreshPathControlMenu(dirPlayer);
       PathCameraSetupUI.InitMovePointTipWindow(dirPlayer);
 
-      while (mod.IsPlayerValid(dirPlayer) && _pathState.isMoving === true) {
+      while (mod.IsPlayerValid(dirPlayer) && Player.IsDeployed(dirPlayer) && _pathState.isMoving === true && _cameraState.type === CameraType.Path) {
         await mod.Wait(DT);
 
         const eyePos = Player.GetEyePosition(dirPlayer);
@@ -3671,6 +4062,113 @@ export namespace PCT {
       mod.UnspawnObject(ps.directorState.pathCameraInteractPoint);
       ps.directorState.pathCameraInteractPoint = null;
     }
+  }
+
+  function GetCurrentCameraPreset(): CameraPreset {
+    const presets = _cameraState.playerPresets.presets;
+
+    if (presets.length === 0) {
+      return {
+        name: "Default",
+        offset: V3.Create(0, 2.2, -8),
+        hOffset: 0,
+        vOffset: 0,
+        pitchOffset: 0,
+      };
+    }
+
+    const index = Clamp(
+      _cameraState.playerPresets.selectedPresetIndex,
+      0,
+      presets.length - 1,
+    );
+
+    return presets[index];
+  }
+
+  function AdjustCameraPreset(delta: number): void {
+    const presetsCount = _cameraState.playerPresets.presets.length;
+    if (presetsCount <= 0) return;
+
+    _cameraState.playerPresets.selectedPresetIndex =
+      (((_cameraState.playerPresets.selectedPresetIndex + delta) %
+        presetsCount) +
+        presetsCount) %
+      presetsCount;
+  }
+
+  function GetPlayerPresetCameraTransform(
+    trackedPlayer: mod.Player,
+    preset: CameraPreset,
+    minPitch: number,
+    maxPitch: number,
+    sprintLookAhead: number,
+  ): { pos: V3; rot: V3 } | null {
+    if (
+      !mod.IsPlayerValid(trackedPlayer) ||
+      !Player.IsDeployed(trackedPlayer)
+    ) {
+      return null;
+    }
+
+    const eyePos = Player.GetEyePosition(trackedPlayer);
+    const facing = Player.GetFacingDirection(trackedPlayer);
+
+    let flatForward = V3.Create(facing.x, 0, facing.z);
+
+    if (V3.Length(flatForward) <= 0.001) {
+      flatForward = V3.Create(0, 0, 1);
+    } else {
+      flatForward = V3.Normalize(flatForward);
+    }
+
+    const trackingPos = V3.Add(
+      eyePos,
+      V3.Scale(flatForward, sprintLookAhead),
+    );
+
+    const right = V3.Create(flatForward.z, 0, -flatForward.x);
+
+    const offsetWorld = V3.Add(
+      V3.Add(
+        V3.Scale(right, preset.offset.x),
+        V3.Create(0, preset.offset.y, 0),
+      ),
+      V3.Scale(flatForward, preset.offset.z),
+    );
+
+    let camPos = V3.Add(trackingPos, offsetWorld);
+
+    const lookDir = V3.Normalize(V3.Sub(trackingPos, camPos));
+
+    let lateral = V3.Create(lookDir.z, 0, -lookDir.x);
+
+    if (V3.Length(lateral) <= 0.001) {
+      lateral = right;
+    } else {
+      lateral = V3.Normalize(lateral);
+    }
+
+    camPos = V3.Add(
+      camPos,
+      V3.Add(
+        V3.Scale(lateral, preset.hOffset),
+        V3.Create(0, preset.vOffset, 0),
+      ),
+    );
+
+    const yaw = YawTowards(camPos, trackingPos);
+    const pitchOffsetRad = DegToRad(preset.pitchOffset);
+    const pitch = Clamp(
+      PitchTowards(camPos, trackingPos) - pitchOffsetRad,
+      minPitch,
+      maxPitch,
+    );
+
+    return {
+      pos: camPos,
+      rot: V3.Create(pitch, yaw, 0),
+    };
   }
 
   namespace FreeCamCollision {
@@ -3900,6 +4398,14 @@ export namespace PCT {
       }
 
       await StartFreeCamera(dirPlayer);
+    } else if (_cameraState.type === CameraType.PlayerPreset) {
+      PlayerPresetCameraUI.ShowCameraControlMenu(dirPlayer);
+
+      Player.GivePortalGadget(dirPlayer);
+      PlayerPresetCameraUI.InitPortalGadgetNotice(dirPlayer);
+      PlayerPresetCameraUI.ShowPortalGadgetNotice(dirPlayer);
+
+      await StartPlayerPresetCamera(dirPlayer);
     }
   }
 
@@ -4807,6 +5313,10 @@ export namespace PCT {
     Player.SetDirectorCurrentStatus(dirPlayer, DirectorStateType.Idle);
   }
 
+  /************************
+   * Camera Type: Free
+   *************************/
+
   async function StartPathCamera(
     dirPlayer: mod.Player,
     points: V3[],
@@ -5028,6 +5538,146 @@ export namespace PCT {
     PathCameraSetupUI.HideCameraControlMenu(dirPlayer);
     PathCameraSetupUI.ShowPathControlMenu(dirPlayer);
     mod.EnableAllInputRestrictions(dirPlayer, false);
+  }
+
+  /************************
+   * Camera Type: Player Preset
+   *************************/
+
+  async function StartPlayerPresetCamera(dirPlayer: mod.Player): Promise<void> {
+    const ps = Player.GetOrCreate(dirPlayer);
+    if (ps === null) return;
+
+    const forwardFacingDirection = Player.GetFacingDirection(dirPlayer);
+    const yaw = Math.atan2(forwardFacingDirection.x, forwardFacingDirection.z);
+
+    mod.EnableInputRestriction(
+      dirPlayer,
+      mod.RestrictedInputs.CameraPitch,
+      true,
+    );
+
+    mod.Teleport(dirPlayer, V3.ToVector(Player.GetPosition(dirPlayer)), yaw);
+
+    const cam = _cameraObject;
+
+    const positionSmoothing = 0.18;
+    const rotationSmoothing = 0.18;
+
+    const sprintLookAheadMax = 1.2;
+    const sprintTransitionSeconds = 1.2;
+    let sprintLookAhead = 0;
+
+    const minPitch = -DegToRad(89);
+    const maxPitch = DegToRad(89);
+
+    const firstPreset = GetCurrentCameraPreset();
+    const firstTarget = GetPlayerPresetCameraTransform(
+      dirPlayer,
+      firstPreset,
+      minPitch,
+      maxPitch,
+      sprintLookAhead,
+    );
+
+    if (firstTarget === null) return;
+
+    let smoothedPos: V3 | null = firstTarget.pos;
+    let smoothedYaw: number | null = firstTarget.rot.y;
+    let smoothedPitch: number | null = firstTarget.rot.x;
+
+    SetCameraTransform(
+      cam,
+      firstTarget.pos,
+      firstTarget.rot.x,
+      firstTarget.rot.y,
+    );
+
+    mod.SetCameraTypeForPlayer(dirPlayer, mod.Cameras.Fixed, _fixedCameraId);
+
+    await mod.Wait(SD);
+
+    _cameraState.isRunning = true;
+
+    Player.SetDirectorCurrentStatus(
+      dirPlayer,
+      DirectorStateType.PlayerPresetCameraActive,
+    );
+
+    while (
+      _cameraState.isRunning === true &&
+      _cameraState.type === CameraType.PlayerPreset
+    ) {
+      await mod.Wait(DT);
+
+      if (!mod.IsPlayerValid(dirPlayer) || !Player.IsDeployed(dirPlayer)) {
+        _cameraState.isRunning = false;
+        break;
+      }
+
+      const targetSprintLookAhead = Player.IsSprinting(dirPlayer)
+        ? sprintLookAheadMax
+        : 0;
+
+      const sprintStep = sprintLookAheadMax * (DT / sprintTransitionSeconds);
+
+      if (sprintLookAhead < targetSprintLookAhead) {
+        sprintLookAhead = Math.min(
+          sprintLookAhead + sprintStep,
+          targetSprintLookAhead,
+        );
+      } else if (sprintLookAhead > targetSprintLookAhead) {
+        sprintLookAhead = Math.max(
+          sprintLookAhead - sprintStep,
+          targetSprintLookAhead,
+        );
+      }
+
+      const preset = GetCurrentCameraPreset();
+
+      const target = GetPlayerPresetCameraTransform(
+        dirPlayer,
+        preset,
+        minPitch,
+        maxPitch,
+        sprintLookAhead,
+      );
+
+      if (target === null) continue;
+
+      smoothedPos =
+        smoothedPos === null
+          ? target.pos
+          : V3.Create(
+              V3.Lerp(smoothedPos.x, target.pos.x, positionSmoothing),
+              V3.Lerp(smoothedPos.y, target.pos.y, positionSmoothing),
+              V3.Lerp(smoothedPos.z, target.pos.z, positionSmoothing),
+            );
+
+      smoothedYaw =
+        smoothedYaw === null
+          ? target.rot.y
+          : LerpAngleRad(smoothedYaw, target.rot.y, rotationSmoothing);
+
+      smoothedPitch =
+        smoothedPitch === null
+          ? target.rot.x
+          : LerpAngleRad(smoothedPitch, target.rot.x, rotationSmoothing);
+
+      SetCameraTransform(cam, smoothedPos, smoothedPitch, smoothedYaw);
+
+      PlayerPresetCameraUI.RefreshCameraControlMenu(dirPlayer);
+    }
+
+    mod.EnableInputRestriction(
+      dirPlayer,
+      mod.RestrictedInputs.CameraPitch,
+      false,
+    );
+
+    mod.SetCameraTypeForPlayer(dirPlayer, mod.Cameras.FirstPerson);
+    Player.SetDirectorCurrentStatus(dirPlayer, DirectorStateType.Idle);
+    PlayerPresetCameraUI.RefreshCameraControlMenu(dirPlayer);
   }
 
   /************************
@@ -5305,6 +5955,11 @@ export namespace PCT {
     );
   }
 
+  function FormatCameraPresetMessage(): mod.Message {
+    const preset = GetCurrentCameraPreset();
+    return mod.Message("PCT_{}", preset.name);
+  }
+
   /************************
    * UI
    *************************/
@@ -5443,7 +6098,7 @@ export namespace PCT {
           PCT_ErrorLogger.New(
             DirectorCodeEntryUI.Init.name,
             `Failed to create button for digit ${entry.digit}`,
-            2,
+            4,
           );
           DirectorCodeEntryUI.Destroy(mod.GetObjId(player));
           return;
@@ -5657,13 +6312,6 @@ export namespace PCT {
             if (ps === null) return;
 
             _cameraState.type = CameraType.Free;
-            StartCamera(buttonPlayer, []).catch((error: unknown) => {
-              PCT_ErrorLogger.New(
-                DirectorMenuUI.Init.name,
-                `Failed to start free camera: ${String(error)}`,
-                4,
-              );
-            });
             root.hide();
             mod.EnableUIInputMode(false, buttonPlayer);
 
@@ -5674,6 +6322,15 @@ export namespace PCT {
             }
 
             PathCameraSetupUI.Destroy(mod.GetObjId(buttonPlayer));
+            PlayerPresetCameraUI.Destroy(mod.GetObjId(buttonPlayer));
+
+            StartCamera(buttonPlayer, []).catch((error: unknown) => {
+              PCT_ErrorLogger.New(
+                DirectorMenuUI.Init.name,
+                `Failed to start free camera: ${String(error)}`,
+                6,
+              );
+            });
           },
         },
         {
@@ -5686,7 +6343,7 @@ export namespace PCT {
             root.hide();
             mod.EnableUIInputMode(false, buttonPlayer);
 
-            Player.GivePortalGadget(buttonPlayer);
+            Player.GivePistolSecondary(buttonPlayer);
 
             if (ps.ui.pathCameraSetupUI.pathPointsMenuRoot) {
               ps.ui.pathCameraSetupUI.pathPointsMenuRoot.show();
@@ -5701,6 +6358,32 @@ export namespace PCT {
             }
 
             TargetSelectionUI.Destroy(mod.GetObjId(buttonPlayer));
+            PlayerPresetCameraUI.Destroy(mod.GetObjId(buttonPlayer));
+          },
+        },
+        {
+          label: mod.Message("PCT_PLAYER_PRESET_CAMERA_KEY"),
+          onClick: async (buttonPlayer: mod.Player) => {
+            const ps = Player.GetOrCreate(buttonPlayer);
+            if (ps === null) return;
+
+            _cameraState.type = CameraType.PlayerPreset;
+            root.hide();
+            mod.EnableUIInputMode(false, buttonPlayer);
+
+            PathCameraSetupUI.Destroy(mod.GetObjId(buttonPlayer));
+            TargetSelectionUI.Destroy(mod.GetObjId(buttonPlayer));
+
+            PlayerPresetCameraUI.InitCameraControlMenu(buttonPlayer);
+            PlayerPresetCameraUI.ShowCameraControlMenu(buttonPlayer);
+
+            StartCamera(buttonPlayer, []).catch((error: unknown) => {
+              PCT_ErrorLogger.New(
+                DirectorMenuUI.Init.name,
+                `Failed to start player preset camera: ${String(error)}`,
+                12,
+              );
+            });
           },
         },
       ];
@@ -6813,6 +7496,388 @@ export namespace PCT {
     }
   }
 
+  namespace PlayerPresetCameraUI {
+    export function InitCameraControlMenu(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+
+      if (ps.ui.playerPresetCameraUI.root) {
+        ps.ui.playerPresetCameraUI.root.show();
+        RefreshCameraControlMenu(dirPlayer);
+        return;
+      }
+
+      const layout = {
+        rootX: 30,
+        rootY: -50,
+        rootWidth: 300,
+
+        titleY: 10,
+        titleHeight: 30,
+
+        paramsYStart: 50,
+        padding: 10,
+        rowGap: 5,
+
+        textWidth: 280,
+        textHeight: 25,
+
+        selectorButtonWidth: 25,
+        stopButtonWidth: 280,
+        stopButtonHeight: 30,
+      };
+
+      const rowHeight =
+        layout.textHeight + layout.rowGap + layout.textHeight + layout.padding;
+
+      const paramsHeight = rowHeight;
+
+      const rootHeight =
+        layout.paramsYStart +
+        paramsHeight +
+        layout.padding * 2 +
+        layout.stopButtonHeight;
+
+      const root = new PCT_UI.Container(
+        {
+          x: layout.rootX,
+          y: layout.rootY,
+          width: layout.rootWidth,
+          height: rootHeight,
+          anchor: mod.UIAnchor.CenterLeft,
+          bgFill: mod.UIBgFill.Blur,
+          bgAlpha: 1,
+          depth: mod.UIDepth.AboveGameUI,
+          showOutline: true,
+          visible: false,
+          childrenParams: [
+            {
+              type: PCT_UI.Type.Container,
+              x: 0,
+              y: 0,
+              width: layout.rootWidth,
+              height: rootHeight,
+              anchor: mod.UIAnchor.TopLeft,
+              bgFill: mod.UIBgFill.Solid,
+              bgColor: PCT_UI.COLORS.BLACK,
+              bgAlpha: 0.6,
+            },
+            {
+              type: PCT_UI.Type.Text,
+              x: 0,
+              y: layout.titleY,
+              width: layout.textWidth,
+              height: layout.titleHeight,
+              anchor: mod.UIAnchor.TopCenter,
+              textSize: 18,
+              textColor: PCT_UI.COLORS.WHITE,
+              textAnchor: mod.UIAnchor.Center,
+              message: mod.Message("PCT_PLAYER_PRESET_CAMERA_SETTINGS"),
+            },
+          ],
+        },
+        dirPlayer,
+      );
+
+      ps.ui.playerPresetCameraUI.root = root;
+      ps.ui.playerPresetCameraUI.buttons = [];
+      ps.ui.playerPresetCameraUI.lastRenderedPresetIndex = null;
+
+      CreatePresetRow();
+      CreateStopButton();
+
+      RefreshCameraControlMenu(dirPlayer);
+
+      function CreatePresetRow(): void {
+        const rowY = layout.paramsYStart;
+        const keyY = rowY;
+        const controlY = rowY + layout.textHeight;
+
+        CreateDivider(keyY);
+
+        new PCT_UI.Text(
+          {
+            parent: root,
+            x: 0,
+            y: keyY,
+            width: layout.textWidth,
+            height: layout.textHeight,
+            anchor: mod.UIAnchor.TopCenter,
+            textSize: 16,
+            textColor: PCT_UI.COLORS.WHITE,
+            textAnchor: mod.UIAnchor.Center,
+            message: mod.Message("PCT_PRESET"),
+          },
+          dirPlayer,
+        );
+
+        ps!.ui.playerPresetCameraUI.presetValue = new PCT_UI.Text(
+          {
+            parent: root,
+            x: 0,
+            y: controlY,
+            width:
+              layout.rootWidth -
+              (layout.padding +
+                layout.selectorButtonWidth +
+                layout.padding * 2),
+            height: layout.textHeight,
+            anchor: mod.UIAnchor.TopCenter,
+            textSize: 16,
+            textColor: PCT_UI.COLORS.WHITE,
+            textAnchor: mod.UIAnchor.Center,
+            message: FormatCameraPresetMessage(),
+          },
+          dirPlayer,
+        );
+
+        CreateSelectorButton(
+          "PCT_<",
+          controlY,
+          mod.UIAnchor.TopLeft,
+          async () => {
+            AdjustCameraPreset(-1);
+            RefreshCameraControlMenu(dirPlayer);
+          },
+        );
+
+        CreateSelectorButton(
+          "PCT_>",
+          controlY,
+          mod.UIAnchor.TopRight,
+          async () => {
+            AdjustCameraPreset(1);
+            RefreshCameraControlMenu(dirPlayer);
+          },
+        );
+      }
+
+      function CreateSelectorButton(
+        label: string,
+        y: number,
+        anchor: mod.UIAnchor,
+        onClick: (buttonPlayer: mod.Player) => Promise<void>,
+      ): PCT_UI.Button {
+        const button = new PCT_UI.Button(
+          {
+            parent: root,
+            x: layout.padding,
+            y,
+            width: layout.selectorButtonWidth,
+            height: layout.selectorButtonWidth,
+            anchor,
+            bgFill: mod.UIBgFill.OutlineThin,
+            hoverAlpha: 0.8,
+            hoverColor: PCT_UI.COLORS.WHITE,
+            bgColor: PCT_UI.COLORS.WHITE,
+            bgAlpha: 0.2,
+            label: {
+              message: mod.Message(label),
+              textSize: 16,
+              textColor: PCT_UI.COLORS.WHITE,
+              textAlpha: 1,
+              textAnchor: mod.UIAnchor.Center,
+            },
+            onClick,
+          },
+          dirPlayer,
+        );
+
+        ps!.ui.playerPresetCameraUI.buttons!.push(button);
+        return button;
+      }
+
+      function CreateDivider(y: number): void {
+        new PCT_UI.Container(
+          {
+            parent: root,
+            x: 0,
+            y: y - 2,
+            width: layout.textWidth,
+            height: 1,
+            anchor: mod.UIAnchor.TopCenter,
+            bgFill: mod.UIBgFill.Solid,
+            bgColor: PCT_UI.COLORS.WHITE,
+            bgAlpha: 0.1,
+          },
+          dirPlayer,
+        );
+      }
+
+      function CreateStopButton(): PCT_UI.Button {
+        const button = new PCT_UI.Button(
+          {
+            parent: root,
+            x: 0,
+            y: layout.paramsYStart + paramsHeight + layout.padding,
+            width: layout.stopButtonWidth,
+            height: layout.stopButtonHeight,
+            anchor: mod.UIAnchor.TopCenter,
+            bgFill: mod.UIBgFill.OutlineThin,
+            bgColor: PCT_UI.COLORS.WHITE,
+            bgAlpha: 0.2,
+            label: {
+              message: mod.Message("PCT_STOP_CAMERA"),
+              textSize: 16,
+              textColor: PCT_UI.COLORS.WHITE,
+              textAlpha: 1,
+              textAnchor: mod.UIAnchor.Center,
+            },
+            onClick: async (buttonPlayer: mod.Player) => {
+              _cameraState.isRunning = false;
+              RefreshCameraControlMenu(buttonPlayer);
+            },
+          },
+          dirPlayer,
+        );
+
+        ps!.ui.playerPresetCameraUI.buttons!.push(button);
+        return button;
+      }
+    }
+
+    export function ShowCameraControlMenu(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+
+      if (!ps.ui.playerPresetCameraUI.root) {
+        InitCameraControlMenu(dirPlayer);
+      }
+
+      ps.ui.playerPresetCameraUI.root?.show();
+      RefreshCameraControlMenu(dirPlayer);
+    }
+
+    export function HideCameraControlMenu(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+      ps.ui.playerPresetCameraUI.root?.hide();
+    }
+
+    export function RefreshCameraControlMenu(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) return;
+
+      const presetIndex = _cameraState.playerPresets.selectedPresetIndex;
+
+      if (ps.ui.playerPresetCameraUI.lastRenderedPresetIndex === presetIndex) {
+        return;
+      }
+
+      ps.ui.playerPresetCameraUI.presetValue?.setMessage(
+        FormatCameraPresetMessage(),
+      );
+
+      ps.ui.playerPresetCameraUI.lastRenderedPresetIndex = presetIndex;
+    }
+
+    export function InitPortalGadgetNotice(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) {
+        return;
+      }
+
+      if (ps.ui.playerPresetCameraUI.portalGadgetNoticeRoot) {
+        ps.ui.playerPresetCameraUI.portalGadgetNoticeRoot.show();
+        return;
+      }
+
+      const layout = {
+        x: 0,
+        y: 75,
+        width: 700,
+        height: 80,
+      };
+
+      ps.ui.playerPresetCameraUI.portalGadgetNoticeRoot = new PCT_UI.Container(
+        {
+          anchor: mod.UIAnchor.TopCenter,
+          depth: mod.UIDepth.AboveGameUI,
+          x: layout.x,
+          y: layout.y,
+          width: layout.width,
+          height: layout.height,
+          bgFill: mod.UIBgFill.Blur,
+          bgAlpha: 0.8,
+          showOutline: true,
+          childrenParams: [
+            {
+              type: PCT_UI.Type.Container,
+              anchor: mod.UIAnchor.TopLeft,
+              x: 0,
+              y: 0,
+              width: layout.width,
+              height: layout.height,
+              bgFill: mod.UIBgFill.Solid,
+              bgColor: PCT_UI.COLORS.BLACK,
+              bgAlpha: 0.6,
+            },
+            {
+              type: PCT_UI.Type.Text,
+              anchor: mod.UIAnchor.TopCenter,
+              x: 0,
+              y: 5,
+              width: layout.width,
+              height: layout.height / 2,
+              textSize: 16,
+              textColor: PCT_UI.COLORS.WHITE,
+              textAlpha: 0.9,
+              message: mod.Message("PCT_PORTAL_GADGET_NOTICE_1"),
+            },
+            {
+              type: PCT_UI.Type.Text,
+              anchor: mod.UIAnchor.TopCenter,
+              x: 0,
+              y: -5 + layout.height / 2,
+              width: layout.width,
+              height: layout.height / 2,
+              textSize: 16,
+              textColor: PCT_UI.COLORS.WHITE,
+              textAlpha: 0.7,
+              message: mod.Message("PCT_PORTAL_GADGET_NOTICE_2"),
+            },
+          ],
+        },
+        dirPlayer,
+      );
+    }
+
+    export function ShowPortalGadgetNotice(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) {
+        return;
+      }
+      ps.ui.playerPresetCameraUI.portalGadgetNoticeRoot?.show();
+    }
+
+    export function HidePortalGadgetNotice(dirPlayer: mod.Player): void {
+      const ps = Player.GetOrCreate(dirPlayer);
+      if (ps === null) {
+        return;
+      }
+      ps.ui.playerPresetCameraUI.portalGadgetNoticeRoot?.hide();
+    }
+
+    export function Destroy(pid: number): void {
+      const ps = Player.GetById(pid);
+      if (ps === null) return;
+
+      if (ps.ui.playerPresetCameraUI.root) {
+        ps.ui.playerPresetCameraUI.root.destroy();
+        ps.ui.playerPresetCameraUI.root = null;
+      }
+
+      if (ps.ui.playerPresetCameraUI.portalGadgetNoticeRoot) {
+        ps.ui.playerPresetCameraUI.portalGadgetNoticeRoot.destroy();
+        ps.ui.playerPresetCameraUI.portalGadgetNoticeRoot = null;
+      }
+
+      ps.ui.playerPresetCameraUI.presetValue = null;
+      ps.ui.playerPresetCameraUI.buttons = [];
+      ps.ui.playerPresetCameraUI.lastRenderedPresetIndex = null;
+    }
+  }
+
   /************************
    * PCT Event Handlers
    *************************/
@@ -6866,7 +7931,7 @@ export namespace PCT {
         PCT_ErrorLogger.New(
           PCTOnPlayerDeployed.name,
           `Error spawning director interact point: ${String(error)}`,
-          3,
+          7,
         );
       });
     }
@@ -6951,6 +8016,7 @@ export namespace PCT {
     DirectorMenuUI.Destroy(pid);
     DirectorCodeEntryUI.Destroy(pid);
     PathCameraSetupUI.DestroyMovePointTipWindow(pid);
+    PlayerPresetCameraUI.Destroy(pid);
 
     if (ps.isDirector) {
       _cameraState.isRunning = false;
@@ -7029,6 +8095,15 @@ export namespace PCT {
     const ps = Player.GetOrCreate(player);
     if (!ps?.directorState) return;
     ps.directorState.actionState.isFiringPortalGadget = true;
+
+    if (_cameraState.type === CameraType.PlayerPreset) {
+      AdjustCameraPreset(1);
+      PlayerPresetCameraUI.RefreshCameraControlMenu(player);
+
+      if (ps.ui.playerPresetCameraUI.portalGadgetNoticeRoot && ps.ui.playerPresetCameraUI.portalGadgetNoticeRoot.visible) {
+        ps.ui.playerPresetCameraUI.portalGadgetNoticeRoot.hide();
+      }
+    }
   }
 
   export function PCTOnPortalGadgetFireStop(player: mod.Player): void {
@@ -7044,5 +8119,12 @@ export namespace PCT {
     const ps = Player.GetOrCreate(player);
     if (!ps?.directorState) return;
     ps.directorState.actionState.isPortalLaserActive = state;
+
+    if (_cameraState.type === CameraType.PlayerPreset && state) {
+      PlayerPresetCameraUI.ShowCameraControlMenu(player);
+    } else if (_cameraState.type === CameraType.PlayerPreset && !state) {
+      PlayerPresetCameraUI.HideCameraControlMenu(player);
+    }
+
   }
 }
