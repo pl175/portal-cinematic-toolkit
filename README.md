@@ -1,4 +1,5 @@
 # Portal Cinematic Toolkit (PCT)
+v 1.01
 
 **Portal Camera Toolkit (PCT)** is a Battlefield Portal camera-control module for creating and operating cinematic fixed-camera paths, player-follow cameras and free camera movement.
 
@@ -19,6 +20,7 @@ I wish to emphasize that the script is a work in progress and is not necessarily
 - In-world interaction point for opening the director panel.
 - Path camera mode with editable path points, including controls for camera speed, path smoothness and VFX spawning along the camera path.
 - Free camera mode, including player target selection and camera collision handling.
+- Player camera presets, which tracks the player with a number of presets for positioning and angling.
 
 ---
 
@@ -235,7 +237,7 @@ Use this table when integrating PCT into an existing script.
 | `OnPlayerUIButtonEvent` | `PCT.PCTOnPlayerUIButtonEvent(...)` | Yes |
 | `OnRayCastHit` | `PCT.PCTOnRayCastHit(...)` | Yes |
 | `OnRayCastMissed` | `PCT.PCTOnRayCastMissed(...)` | Yes |
-| `OnPortalGadgetFireStart` | `PCT.PCTOnPortalGadgetFireStart(...)` | Optional / Not yet utilized |
+| `OnPortalGadgetFireStart` | `PCT.PCTOnPortalGadgetFireStart(...)` | Yes |
 | `OnPortalGadgetFireStop` | `PCT.PCTOnPortalGadgetFireStop(...)` | Optional / Not yet utilized |
 | `OnPortalGadgetLaserToggle` | `PCT.PCTOnPortalGadgetLaserToggle(...)` | Optional / Not yet utilized |
 
