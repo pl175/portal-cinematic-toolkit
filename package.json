@@ -1,0 +1,17 @@
+{
+  "name": "portal-cinematic-toolkit",
+  "version": "1.01",
+  "type": "module",
+  "scripts": {
+    "bundle": "bf6-portal-bundler --entrypoint ./src/index.ts --outDir ./dist"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@typescript-eslint/eslint-plugin": "^8.49.0",
+    "@typescript-eslint/parser": "^8.49.0",
+    "bf6-portal-bundler": "^1.4.1",
+    "eslint": "^9.39.4",
+    "globals": "^16.5.0",
+    "typescript-eslint": "^8.49.0"
+  }
+}
