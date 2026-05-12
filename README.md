@@ -72,7 +72,7 @@ Paste the entire PCT strings file into your Portal strings file.
 
 ## 4. Use the included experience hooks
 
-At the bottom of the script, include the required Portal event hooks. These are NOT built-in to the script. You need to add them. Please refer to the section **Minimal Standalone Template** at the end of this page, which includes a template for the experience hooks.
+At the bottom of the script, make sure the required Portal event hooks are inserted. These are already built-in to the release script. You don't need to add them.
 
 ## 5. Adjust the PCT.Initialize function in OnGameModeStarted()
 
@@ -126,7 +126,7 @@ This keeps PCT available to your event hooks.
 
 ## 4. Adjust the event functions. Do not simply duplicate them
 
-You need to adjust your event functions to create PCT hooks. These are NOT built into the script. You need to add them. Please refer to the section **Minimal Standalone Template** at the end of this page, which includes a template for the experience hooks.
+You need to adjust your event functions to create PCT hooks. The default event functions are already built into the release script, if this is what you are using. This means you will need to make some adjustments to your script(s) to ensure there is no duplicate event handler function, such as OnGameModeStarted(). Please refer to the section **Minimal Standalone Template** at the end of this page, which includes a template for the experience hooks.
 
 Portal expects one exported function per event name.
 
