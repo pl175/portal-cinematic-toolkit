@@ -67,7 +67,7 @@ Do not split the namespaces unless you are comfortable managing imports/exports 
 
 ## 3. Paste the full PCT strings file in an existing or new experience
 
-Either (i) download and import releases/strings-vXX.json as a script into your Portal experience or (ii) paste the entire contents of releases/strings-vXX.json into your Portal experience script file.
+Either (i) download and import releases/strings-vXX.json as the STRINGS file into your Portal experience or (ii) paste the entire contents of releases/strings-vXX.json into your Portal experience STRINGS file.
 
 ## 4. Use the included experience hooks
 
@@ -104,7 +104,7 @@ The location of the Fixed Camera in Godot is important. This is where the intera
 
 ## 2. Paste the entire contents of the PCT strings file in your existing strings file
 
-Paste the entire releases/strings-vXX.json strings file into your Portal strings file.
+Paste the entire releases/strings-vXX.json strings file into your Portal STRINGS file.
 
 ## 3. Insert PCT_ErrorLogger, PCT_UI and PCT namespaces
 
