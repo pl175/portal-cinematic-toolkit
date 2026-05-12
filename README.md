@@ -71,7 +71,7 @@ Either (i) download and import releases/strings-vXX.json as the STRINGS file int
 
 ## 4. Use the included experience hooks
 
-At the bottom of the script, make sure the required Portal event hooks are inserted. Event handler functions (such as OnGameModeStarted() are functions that are built into the Portal API and are called automatically at game runtime). These are already built-in to the release script. You don't need to add them. Go to step 5 just below.
+At the bottom of the script, make sure the required Portal event hooks are inserted. Event handler functions such as OnGameModeStarted() are functions that are built into the Portal API and are called automatically at game runtime. These are already built-in to the release script. You don't need to add them. Go to step 5 just below.
 
 ## 5. Adjust the PCT.Initialize function in OnGameModeStarted()
 
